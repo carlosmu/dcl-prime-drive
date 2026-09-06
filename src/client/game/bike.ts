@@ -5,9 +5,11 @@ import { LANE_COUNT, SKINS, TRACK, findSkin, laneToX } from '../../shared/config
 /**
  * The player's bike.
  *
- * The Decentraland avatar is hidden and frozen: what you see and control is
- * this entity. It only moves along X between the three lanes; the progress
- * is the world's, which comes toward it.
+ * The avatar rides it frozen on top, so the bike itself never moves: it stays
+ * planted at the center of the road and only leans. `currentX` is the lane it
+ * logically occupies — obstacles are tested against it — and the world is
+ * shifted sideways to match, the same way progress along Z is the world
+ * coming toward the player.
  *
  * The four skins are instantiated at startup and toggled with
  * `VisibilityComponent`: swapping `GltfContainer.src` on the fly would
@@ -40,7 +42,7 @@ let lean = 0
 export function buildBike() {
   root = engine.addEntity()
   Transform.create(root, {
-    position: Vector3.create(currentX, TRACK.roadY + 0.1, TRACK.playerZ),
+    position: Vector3.create(TRACK.centerX, TRACK.roadY + 0.1, TRACK.playerZ),
     rotation: Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, 0)
   })
 
@@ -102,6 +104,10 @@ export function getBikeX(): number {
   return currentX
 }
 
+export function getBikeY(): number {
+  return Transform.get(root).position.y
+}
+
 export function resetBike() {
   targetLane = 1
   currentX = laneToX(1)
@@ -131,8 +137,9 @@ export function updateBike(dt: number) {
 }
 
 function applyTransform() {
+  // The bike never leaves the center of the road: `currentX` is the lane it
+  // logically occupies, and the world is what slides sideways (see
+  // `setWorldOffset` in track.ts). Only the lean is drawn here.
   const transform = Transform.getMutable(root)
-  transform.position.x = currentX
-  // Roll is applied on top of the base yaw: it tilts the bike toward the side it's moving to.
   transform.rotation = Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, -lean)
 }

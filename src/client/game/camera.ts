@@ -6,9 +6,10 @@ import { TRACK } from '../../shared/config'
  * Chase camera.
  *
  * It's a VirtualCamera: Decentraland's normal camera follows the avatar,
- * which is hidden and still here. It follows the bike's X with a delay, so
- * that changing lanes makes the bike drift off-center in the frame and the
- * change feels tangible.
+ * which is sitting frozen on the bike. The bike is nailed to the center of
+ * the road and the world slides under it, so the camera moves *against* the
+ * lane change: the bike still drifts off-center in the frame — which is what
+ * makes the change feel tangible — without anything having to move it.
  */
 
 const HEIGHT = 4
@@ -55,7 +56,10 @@ export function activateCamera() {
  * the acceleration is felt, not just read off the speedometer.
  */
 export function updateCamera(dt: number, bikeX: number, boost = 0) {
-  const targetX = TRACK.centerX + (bikeX - TRACK.centerX) * X_FOLLOW
+  // `X_FOLLOW - 1` because the bike doesn't move: to leave it off-center by
+  // the same amount as following its X would, the camera has to travel the
+  // remainder in the opposite direction.
+  const targetX = TRACK.centerX + (bikeX - TRACK.centerX) * (X_FOLLOW - 1)
   cameraX += (targetX - cameraX) * Math.min(1, X_RESPONSE * dt)
 
   const targetBoost = Math.max(0, Math.min(1, boost))
@@ -64,5 +68,4 @@ export function updateCamera(dt: number, bikeX: number, boost = 0) {
   const camera = Transform.getMutable(cameraEntity)
   camera.position.x = cameraX
   camera.position.z = TRACK.playerZ - BEHIND - BOOST_PULLBACK * boostBlend
-  Transform.getMutable(lookTarget).position.x = bikeX
 }

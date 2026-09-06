@@ -41,7 +41,7 @@ export function laneToX(lane: number): number {
 
 export const RACE = {
   /** Total race distance, in meters. */
-  distanceM: 10000,
+  distanceM: 1000,
   /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
   /** Speed at the start, in m/s. */

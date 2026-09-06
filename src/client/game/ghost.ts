@@ -13,6 +13,7 @@ import {
 import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { RACE, TRACK, findSkin } from '../../shared/config'
 import { BIKE_YAW_DEG } from './bike'
+import { getWorldRoot } from './track'
 
 /**
  * Track record ghost.
@@ -36,6 +37,7 @@ let visible = false
 export function buildGhost() {
   root = engine.addEntity()
   Transform.create(root, {
+    parent: getWorldRoot(),
     position: Vector3.create(TRACK.centerX, TRACK.roadY + 0.25, TRACK.playerZ),
     rotation: Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, 0)
   })

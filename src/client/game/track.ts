@@ -38,12 +38,37 @@ type LoopRing = {
 
 const rings: LoopRing[] = []
 
+/**
+ * Root of everything that slides sideways.
+ *
+ * The avatar can't be repositioned without the client interrupting its ride
+ * emote and playing a walk/run cycle, so the bike — and the player sitting on
+ * it — stay planted at the center of the road: a lane change moves the world
+ * instead, the same way progress along Z is the world coming toward the
+ * player. Everything that has to line up with the bike's lane hangs here.
+ */
+let worldRoot: Entity = engine.RootEntity
+
 export function buildTrack() {
+  worldRoot = engine.addEntity()
+  Transform.create(worldRoot, {})
+
+  buildGround()
   buildRoadSurface()
   buildNeonRails()
   rings.push(buildStripes())
   rings.push(buildPylons())
   rings.push(buildBuildings())
+}
+
+/** Parent for scenery built elsewhere (spawner pools, ghost). */
+export function getWorldRoot(): Entity {
+  return worldRoot
+}
+
+/** Lines the world up so the bike's lane sits under the fixed bike. */
+export function setWorldOffset(bikeX: number) {
+  Transform.getMutable(worldRoot).position.x = TRACK.centerX - bikeX
 }
 
 /**
@@ -65,12 +90,33 @@ export function scrollTrack(delta: number) {
 
 // --- Road ----------------------------------------------------------------
 
-function buildRoadSurface() {
-  const halfLength = TRACK.roadLength / 2
+/**
+ * Ground filling the scene's full 64 m width, under the road.
+ *
+ * It's the one piece that does NOT hang from `worldRoot`: it already spans
+ * the scene edge to edge, and shifting it sideways would push it out of
+ * bounds. It runs under the road instead of flanking it, so no lane offset
+ * can open a gap between them.
+ */
+function buildGround() {
+  const ground = engine.addEntity()
+  Transform.create(ground, {
+    position: Vector3.create(TRACK.centerX, TRACK.roadY - 0.02, TRACK.roadLength / 2),
+    scale: Vector3.create(64, 0.08, TRACK.roadLength)
+  })
+  MeshRenderer.setBox(ground)
+  Material.setPbrMaterial(ground, {
+    albedoColor: Color4.create(0.03, 0.03, 0.05, 1),
+    roughness: 1,
+    metallic: 0
+  })
+}
 
+function buildRoadSurface() {
   const road = engine.addEntity()
   Transform.create(road, {
-    position: Vector3.create(TRACK.centerX, TRACK.roadY, halfLength),
+    parent: worldRoot,
+    position: Vector3.create(TRACK.centerX, TRACK.roadY, TRACK.roadLength / 2),
     scale: Vector3.create(TRACK.roadWidth, 0.1, TRACK.roadLength)
   })
   MeshRenderer.setBox(road)
@@ -79,26 +125,6 @@ function buildRoadSurface() {
     roughness: 0.85,
     metallic: 0
   })
-
-  // Shoulders: fill the scene's 64 m width so there's no visible gap.
-  const shoulderWidth = (64 - TRACK.roadWidth) / 2
-  for (const side of [-1, 1]) {
-    const shoulder = engine.addEntity()
-    Transform.create(shoulder, {
-      position: Vector3.create(
-        TRACK.centerX + side * (TRACK.roadWidth / 2 + shoulderWidth / 2),
-        TRACK.roadY - 0.02,
-        halfLength
-      ),
-      scale: Vector3.create(shoulderWidth, 0.08, TRACK.roadLength)
-    })
-    MeshRenderer.setBox(shoulder)
-    Material.setPbrMaterial(shoulder, {
-      albedoColor: Color4.create(0.03, 0.03, 0.05, 1),
-      roughness: 1,
-      metallic: 0
-    })
-  }
 }
 
 /** Two emissive rails on the sides: they give the track its vanishing line. */
@@ -106,6 +132,7 @@ function buildNeonRails() {
   for (const side of [-1, 1]) {
     const rail = engine.addEntity()
     Transform.create(rail, {
+      parent: worldRoot,
       position: Vector3.create(
         TRACK.centerX + side * (TRACK.roadWidth / 2 - 0.15),
         TRACK.roadY + 0.12,
@@ -137,6 +164,7 @@ function buildStripes(): LoopRing {
       const stripe = engine.addEntity()
       GltfContainer.create(stripe, { src: STRIPE_MODEL })
       Transform.create(stripe, {
+        parent: worldRoot,
         position: Vector3.create(x, TRACK.roadY + 0.06, TRACK.despawnZ + i * STRIPE_SPACING),
         scale: Vector3.create(2, 1, 1.6)
       })
@@ -157,6 +185,7 @@ function buildPylons(): LoopRing {
       const pylon = engine.addEntity()
       GltfContainer.create(pylon, { src: PYLON_MODEL })
       Transform.create(pylon, {
+        parent: worldRoot,
         position: Vector3.create(
           TRACK.centerX + side * (TRACK.roadWidth / 2 + 0.9),
           TRACK.roadY + PYLON_BASE_Y,
@@ -188,6 +217,7 @@ function buildBuildings(): LoopRing {
       const building = engine.addEntity()
       GltfContainer.create(building, { src: BUILDING_MODELS[(i + s) % BUILDING_MODELS.length] })
       Transform.create(building, {
+        parent: worldRoot,
         position: Vector3.create(TRACK.buildingX[s], 0, TRACK.despawnZ + i * BUILDING_SPACING)
       })
       randomizeBuilding(building, s)
@@ -203,10 +233,20 @@ function buildBuildings(): LoopRing {
   }
 }
 
+/**
+ * How far out a building may be pushed from its row.
+ *
+ * Capped so that the widest building (±2 m of mesh at up to 1.8x scale) still
+ * fits inside the scene once the world is shifted by a full lane: with a
+ * wider spread the outer row crosses x = 0 and the client drops it for being
+ * out of bounds.
+ */
+const BUILDING_SPREAD = 6
+
 function randomizeBuilding(entity: Entity, sideIndex: number) {
   const side = sideIndex === 0 ? -1 : 1
   const transform = Transform.getMutable(entity)
-  transform.position.x = TRACK.buildingX[sideIndex] + side * Math.random() * 10
+  transform.position.x = TRACK.buildingX[sideIndex] + side * Math.random() * BUILDING_SPREAD
   transform.scale = Vector3.create(1 + Math.random() * 0.8, 1 + Math.random() * 2.4, 1 + Math.random() * 0.8)
   transform.rotation = Quaternion.fromEulerDegrees(0, side > 0 ? 180 : 0, 0)
 }

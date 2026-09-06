@@ -1,6 +1,7 @@
 import { Animator, AudioSource, Entity, GltfContainer, Material, MeshRenderer, Transform, engine } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { LANE_COUNT, RACE, SPAWN, TRACK, laneToX } from '../../shared/config'
+import { getWorldRoot } from './track'
 
 /**
  * Coins, obstacles, and checkpoint arches.
@@ -90,6 +91,7 @@ export function buildSpawner() {
     const entity = engine.addEntity()
     GltfContainer.create(entity, { src: COIN_MODEL })
     Transform.create(entity, {
+      parent: getWorldRoot(),
       position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
       scale: Vector3.create(2.4, 2.4, 2.4)
     })
@@ -110,6 +112,7 @@ export function buildSpawner() {
     const entity = engine.addEntity()
     GltfContainer.create(entity, { src: ARCH_MODEL })
     Transform.create(entity, {
+      parent: getWorldRoot(),
       position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
       rotation: Quaternion.fromEulerDegrees(0, 90, 0),
       scale: Vector3.create(1, ARCH_SCALE_Y, 3.2)
@@ -141,6 +144,7 @@ export function buildSpawner() {
 function buildBarrier(): PoolItem {
   const entity = engine.addEntity()
   Transform.create(entity, {
+    parent: getWorldRoot(),
     position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
     scale: Vector3.create(BARRIER_WIDTH, BARRIER_HEIGHT, BARRIER_DEPTH)
   })
@@ -180,6 +184,7 @@ function buildCone(): PoolItem {
   const entity = engine.addEntity()
   GltfContainer.create(entity, { src: CONE_MODEL })
   Transform.create(entity, {
+    parent: getWorldRoot(),
     position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
     scale: Vector3.create(3, 3, 3)
   })
