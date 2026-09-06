@@ -108,6 +108,11 @@ export function getBikeY(): number {
   return Transform.get(root).position.y
 }
 
+/** Parent for anything that has to ride along with the bike, like the rider. */
+export function getBikeRoot(): Entity {
+  return root
+}
+
 export function resetBike() {
   targetLane = 1
   currentX = laneToX(1)
