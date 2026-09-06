@@ -3,6 +3,8 @@ import {
   Billboard,
   Entity,
   GltfContainer,
+  GltfNodeModifiers,
+  MaterialTransparencyMode,
   TextShape,
   Transform,
   VisibilityComponent,
@@ -38,6 +40,24 @@ export function buildGhost() {
     rotation: Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, 0)
   })
   GltfContainer.create(root, { src: GHOST_SKIN.model })
+  GltfNodeModifiers.create(root, {
+    modifiers: [
+      {
+        path: '',
+        material: {
+          material: {
+            $case: 'pbr',
+            pbr: {
+              albedoColor: Color4.create(0, 1, 1, 0.1),
+              transparencyMode: MaterialTransparencyMode.MTM_ALPHA_BLEND,
+              emissiveColor: Color4.create(0, 1, 1, 0.1),
+              emissiveIntensity: 0.1
+            }
+          }
+        }
+      }
+    ]
+  })
   Animator.create(root, {
     states: [{ clip: GHOST_SKIN.goClip, playing: true, loop: true }]
   })
