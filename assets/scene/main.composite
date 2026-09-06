@@ -433,7 +433,8 @@
         "0": {
           "json": {
             "name": "Prime Drive",
-            "description": "Empty Scene Template",
+            "description": "Carrera de 3 carriles a 10 km con checkpoints, ghost del record y garage de motos.",
+            "ageRating": "A",
             "categories": [],
             "author": "SDK",
             "tags": [],
@@ -767,36 +768,42 @@
             },
             "spawnPoints": [
               {
-                "name": "SpawnArea1",
+                "name": "start-line",
                 "default": true,
                 "position": {
                   "x": {
                     "$case": "range",
                     "value": [
-                      30.5,
-                      33.5
+                      31,
+                      33
                     ]
                   },
                   "y": {
-                    "$case": "single",
-                    "value": 0
+                    "$case": "range",
+                    "value": [
+                      0,
+                      0
+                    ]
                   },
                   "z": {
                     "$case": "range",
                     "value": [
-                      30.5,
-                      33.5
+                      20,
+                      22
                     ]
                   }
                 },
                 "cameraTarget": {
-                  "x": 8,
-                  "y": 1,
-                  "z": 8
+                  "x": 32,
+                  "y": 1.5,
+                  "z": 40
                 }
               }
             ],
-            "skyboxConfig": {}
+            "skyboxConfig": {
+              "fixedTime": 46560
+            },
+            "hideLandscapeTerrain": true
           }
         }
       }
