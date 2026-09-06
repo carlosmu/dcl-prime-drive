@@ -3,7 +3,7 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Prime Drive",
-    "description": "Empty Scene Template",
+    "description": "Carrera de 3 carriles a 10 km con checkpoints, ghost del record y garage de motos.",
     "favicon": "favicon_asset",
     "navmapThumbnail": ""
   },
@@ -101,31 +101,30 @@
   },
   "spawnPoints": [
     {
-      "name": "SpawnArea1",
+      "name": "start-line",
       "default": true,
       "position": {
         "x": [
-          30.5,
-          33.5
+          31,
+          33
         ],
         "y": [
           0,
           0
         ],
         "z": [
-          30.5,
-          33.5
+          20,
+          22
         ]
       },
       "cameraTarget": {
-        "x": 8,
-        "y": 1,
-        "z": 8
+        "x": 32,
+        "y": 1.5,
+        "z": 40
       }
     }
   ],
   "requiredPermissions": [
-    "ALLOW_TO_TRIGGER_AVATAR_EMOTE",
     "ALLOW_TO_MOVE_PLAYER_INSIDE_SCENE"
   ],
   "featureToggles": {
@@ -134,10 +133,20 @@
     "nearbyVoiceChat": "enabled"
   },
   "creator": "",
-  "skyboxConfig": {},
-  "landscapeTerrain": true,
+  "skyboxConfig": {
+    "fixedTime": 46560
+  },
+  "landscapeTerrain": false,
   "source": {
     "origin": "creator-hub",
     "projectId": "fe7c5d2f-30db-4359-8dec-d0e268c6d037"
-  }
+  },
+  "rating": "A",
+  "authoritativeMultiplayer": true,
+  "worldConfiguration": {
+    "name": "prime-drive.dcl.eth"
+  },
+  "logsPermissions": [
+    "0x0000000000000000000000000000000000000000"
+  ]
 }

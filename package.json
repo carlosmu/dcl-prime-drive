@@ -1,17 +1,18 @@
 {
-  "name": "dcl-project",
+  "name": "prime-drive",
   "version": "1.0.0",
-  "description": "SDK7 Template scene",
+  "description": "Prime Drive - runner de carreras de 3 carriles para Decentraland SDK7 con servidor autoritativo",
   "scripts": {
     "start": "sdk-commands start",
     "deploy": "sdk-commands deploy",
     "build": "sdk-commands build",
-    "upgrade-sdk": "npm install --save-dev @dcl/sdk@latest",
-    "upgrade-sdk:next": "npm install --save-dev @dcl/sdk@next"
+    "upgrade-sdk": "npm install --save-dev @dcl/sdk@auth-server",
+    "server-logs": "sdk-commands sdk-server-logs",
+    "deploy-env": "sdk-commands deploy-env"
   },
   "devDependencies": {
-    "@dcl/js-runtime": "latest",
-    "@dcl/sdk": "latest"
+    "@dcl/js-runtime": "7.27.1-33533530571.commit-451d001",
+    "@dcl/sdk": "^7.27.1-33533530571.commit-451d001"
   },
   "engines": {
     "node": ">=16.0.0",

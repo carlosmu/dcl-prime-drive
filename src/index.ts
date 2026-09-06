@@ -1,12 +1,15 @@
-import {} from '@dcl/sdk/math'
-import { engine } from '@dcl/sdk/ecs'
-import { setupUi } from './ui'
+import { isServer } from '@dcl/sdk/network'
+// El registro de mensajes tiene que correr en ambos lados y antes de main().
+import './shared/messages'
+import './shared/schemas'
 
+export async function main() {
+  if (isServer()) {
+    const { initServer } = await import('./server/server')
+    await initServer()
+    return
+  }
 
-export function main() {
-    // uncomment the line below to initialize UI from ui.tsx
-    //setupUi()
-
-    // your scene code here
+  const { initClient } = await import('./client/setup')
+  initClient()
 }
-
