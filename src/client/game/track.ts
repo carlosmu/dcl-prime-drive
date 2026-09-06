@@ -24,6 +24,8 @@ const DECOR_RANGE_Z = 200
 
 const STRIPE_SPACING = SPAWN.laneStripeEveryM
 const PYLON_SPACING = 16
+/** El poste tiene su origen centrado en Y: sin esto queda medio enterrado. */
+const PYLON_BASE_Y = 1.04
 const BUILDING_SPACING = SPAWN.buildingEveryM
 
 type LoopRing = {
@@ -157,7 +159,7 @@ function buildPylons(): LoopRing {
       Transform.create(pylon, {
         position: Vector3.create(
           TRACK.centerX + side * (TRACK.roadWidth / 2 + 0.9),
-          TRACK.roadY,
+          TRACK.roadY + PYLON_BASE_Y,
           TRACK.despawnZ + i * PYLON_SPACING
         ),
         rotation: Quaternion.fromEulerDegrees(0, side > 0 ? 180 : 0, 0)

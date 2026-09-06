@@ -185,8 +185,16 @@ Se gastan en el garage, en las 4 skins de moto (0 / 1500 / 4000 / 9000).
 
 - Del proyecto `coin-runner`: `coin.glb`, `building_01..03.glb`, `street_lines.glb` y los
   sonidos.
-- Del catálogo OpenDCL: las 4 motos (`bike_01..04.glb`), los obstáculos (`obstacle_cone`,
-  `obstacle_barrier`), el arco de checkpoint (`obstacle_gate`) y los postes (`track_edge`).
+- Del catálogo OpenDCL: las 4 motos (`bike_01..04.glb`), los conos (`obstacle_cone`), el
+  arco de checkpoint (`obstacle_gate`) y los postes (`track_edge`).
+
+> **Cuidado con los GLB del catálogo que traen transformación en sus nodos.** La valla que
+> se usaba antes (`obstacle_barrier.glb`) tenía los nodos desplazados +14 m en Y y −17 m en
+> Z y escalados 8× y 15×, así que la malla aparecía lejísimos de la posición de la entidad.
+> Como la colisión se calcula contra la entidad, el jugador chocaba contra nada. Ahora la
+> valla es una primitiva: lo que se ve y lo que colisiona miden lo mismo por construcción.
+> Antes de usar un modelo nuevo como obstáculo, verificá que su bbox esté centrado en el
+> origen y que sus nodos no tengan `translation`/`scale` propios.
 
 La calzada, las banquinas y los rieles de neón son primitivas con material PBR: cero
 texturas y 5 entidades para los 320 m de pista.

@@ -1,5 +1,5 @@
-import { Animator, AudioSource, Entity, GltfContainer, Transform, engine } from '@dcl/sdk/ecs'
-import { Quaternion, Vector3 } from '@dcl/sdk/math'
+import { Animator, AudioSource, Entity, GltfContainer, Material, MeshRenderer, Transform, engine } from '@dcl/sdk/ecs'
+import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { LANE_COUNT, RACE, SPAWN, TRACK, laneToX } from '../../shared/config'
 
 /**
@@ -13,7 +13,6 @@ const COIN_MODEL = 'assets/models/coin.glb'
 const COIN_IDLE_CLIP = '0. idle'
 const COIN_CATCH_CLIP = '1. catch'
 const CONE_MODEL = 'assets/models/obstacle_cone.glb'
-const BARRIER_MODEL = 'assets/models/obstacle_barrier.glb'
 const ARCH_MODEL = 'assets/models/obstacle_gate.glb'
 
 const COIN_SFX = 'assets/sounds/coin.mp3'
@@ -29,6 +28,23 @@ const COIN_POOL_SIZE = 44
 const OBSTACLE_POOL_SIZE = 20
 const ARCH_POOL_SIZE = 4
 
+const ARCH_SCALE_Y = 1.1
+/** El arco tiene su origen 0.92 m por encima de la base de la malla. */
+const ARCH_BASE_Y = 0.92 * ARCH_SCALE_Y
+
+/**
+ * Ancho de la valla, en metros.
+ *
+ * La valla es una primitiva y no un GLB a proposito: el modelo del catalogo
+ * traia una transformacion propia en sus nodos (+14 m en Y, -17 m en Z) que
+ * dejaba la malla lejos de la posicion de la entidad. La colision se calcula
+ * contra la entidad, asi que el jugador chocaba contra nada. Con una caja, lo
+ * que se ve y lo que colisiona miden lo mismo por construccion.
+ */
+const BARRIER_WIDTH = 2.9
+const BARRIER_HEIGHT = 1.1
+const BARRIER_DEPTH = 0.4
+
 /** Medio ancho de la moto para el test de colision. */
 const BIKE_HALF_WIDTH = 0.55
 /** Margen extra para agarrar monedas: recompensa el intento, no castiga el pixel. */
@@ -41,6 +57,13 @@ type PoolItem = {
   consumed: boolean
   /** Medio ancho efectivo del obstaculo. */
   halfWidth: number
+  /**
+   * Y a la que se activa la pieza.
+   *
+   * Cada modelo tiene su origen en un lugar distinto respecto de su base, asi
+   * que sin esto unos flotan y otros quedan enterrados.
+   */
+  spawnY: number
 }
 
 const coins: PoolItem[] = []
@@ -76,18 +99,11 @@ export function buildSpawner() {
         { clip: COIN_CATCH_CLIP, playing: false, loop: false }
       ]
     })
-    coins.push({ entity, active: false, consumed: false, halfWidth: COIN_GRAB_HALF_WIDTH })
+    coins.push({ entity, active: false, consumed: false, halfWidth: COIN_GRAB_HALF_WIDTH, spawnY: COIN_Y })
   }
 
   for (let i = 0; i < OBSTACLE_POOL_SIZE; i++) {
-    const entity = engine.addEntity()
-    const isBarrier = i % 2 === 0
-    GltfContainer.create(entity, { src: isBarrier ? BARRIER_MODEL : CONE_MODEL })
-    Transform.create(entity, {
-      position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
-      scale: isBarrier ? Vector3.create(2.6, 1.6, 1.4) : Vector3.create(3, 3, 3)
-    })
-    obstacles.push({ entity, active: false, consumed: false, halfWidth: isBarrier ? 1.45 : 0.75 })
+    obstacles.push(i % 2 === 0 ? buildBarrier() : buildCone())
   }
 
   for (let i = 0; i < ARCH_POOL_SIZE; i++) {
@@ -96,9 +112,9 @@ export function buildSpawner() {
     Transform.create(entity, {
       position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
       rotation: Quaternion.fromEulerDegrees(0, 90, 0),
-      scale: Vector3.create(1, 1.1, 3.2)
+      scale: Vector3.create(1, ARCH_SCALE_Y, 3.2)
     })
-    arches.push({ entity, active: false, consumed: false, halfWidth: 0 })
+    arches.push({ entity, active: false, consumed: false, halfWidth: 0, spawnY: ARCH_BASE_Y })
   }
 
   coinSfx = []
@@ -116,6 +132,58 @@ export function buildSpawner() {
   winSfx = engine.addEntity()
   Transform.create(winSfx, { position: Vector3.create(TRACK.centerX, 2, TRACK.playerZ) })
   AudioSource.create(winSfx, { audioClipUrl: WIN_SFX, loop: false, playing: false, global: true, volume: 1 })
+}
+
+/**
+ * Valla: caja oscura con una franja emisiva arriba, en el mismo lenguaje visual
+ * que los rieles de la pista. Mide exactamente lo que mide su colision.
+ */
+function buildBarrier(): PoolItem {
+  const entity = engine.addEntity()
+  Transform.create(entity, {
+    position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
+    scale: Vector3.create(BARRIER_WIDTH, BARRIER_HEIGHT, BARRIER_DEPTH)
+  })
+  MeshRenderer.setBox(entity)
+  Material.setPbrMaterial(entity, {
+    albedoColor: Color4.create(0.16, 0.06, 0.04, 1),
+    roughness: 0.7,
+    metallic: 0
+  })
+
+  const stripe = engine.addEntity()
+  Transform.create(stripe, {
+    parent: entity,
+    position: Vector3.create(0, 0.42, 0),
+    scale: Vector3.create(1.04, 0.22, 1.15)
+  })
+  MeshRenderer.setBox(stripe)
+  Material.setPbrMaterial(stripe, {
+    albedoColor: Color4.create(1, 0.45, 0.1, 1),
+    emissiveColor: Color3.create(1, 0.4, 0.05),
+    emissiveIntensity: 3,
+    roughness: 0.3,
+    metallic: 0
+  })
+
+  return {
+    entity,
+    active: false,
+    consumed: false,
+    halfWidth: BARRIER_WIDTH / 2,
+    // La caja de DCL se centra en su origen: media altura la deja apoyada.
+    spawnY: BARRIER_HEIGHT / 2
+  }
+}
+
+function buildCone(): PoolItem {
+  const entity = engine.addEntity()
+  GltfContainer.create(entity, { src: CONE_MODEL })
+  Transform.create(entity, {
+    position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
+    scale: Vector3.create(3, 3, 3)
+  })
+  return { entity, active: false, consumed: false, halfWidth: 0.7, spawnY: 0 }
 }
 
 /** Jingle de meta. */
@@ -275,7 +343,7 @@ function spawnCoinWave(z: number) {
   for (let i = 0; i < count; i++) {
     const item = takeFree(coins)
     if (!item) return
-    activate(item, x, COIN_Y, z + i * SPAWN.coinSpacingZ)
+    activate(item, x, z + i * SPAWN.coinSpacingZ)
     Animator.playSingleAnimation(item.entity, COIN_IDLE_CLIP, true)
   }
 }
@@ -289,14 +357,14 @@ function spawnObstacleGroup(z: number) {
   for (const lane of lanes) {
     const item = takeFree(obstacles)
     if (!item) return
-    activate(item, laneToX(lane), 0, z)
+    activate(item, laneToX(lane), z)
   }
 }
 
 function spawnArch(z: number) {
   const item = takeFree(arches)
   if (!item) return
-  activate(item, TRACK.centerX, 0, z)
+  activate(item, TRACK.centerX, z)
 }
 
 function takeFree(pool: PoolItem[]): PoolItem | null {
@@ -306,12 +374,12 @@ function takeFree(pool: PoolItem[]): PoolItem | null {
   return null
 }
 
-function activate(item: PoolItem, x: number, y: number, z: number) {
+function activate(item: PoolItem, x: number, z: number) {
   item.active = true
   item.consumed = false
   const transform = Transform.getMutable(item.entity)
   transform.position.x = x
-  transform.position.y = y
+  transform.position.y = item.spawnY
   transform.position.z = z
 }
 
