@@ -3,16 +3,18 @@
   "version": "1.0.0",
   "description": "Prime Drive - runner de carreras de 3 carriles para Decentraland SDK7 con servidor autoritativo",
   "scripts": {
-    "start": "sdk-commands start",
+    "start": "node scripts/start.js",
     "deploy": "sdk-commands deploy",
     "build": "sdk-commands build",
     "upgrade-sdk": "npm install --save-dev @dcl/sdk@auth-server",
     "server-logs": "sdk-commands sdk-server-logs",
-    "deploy-env": "sdk-commands deploy-env"
+    "deploy-env": "sdk-commands deploy-env",
+    "start:bevy": "sdk-commands start"
   },
-  "devDependencies": {
+  "dependencies": {
+    "@dcl-sdk/utils": "^1.4.0",
     "@dcl/js-runtime": "7.27.1-33533530571.commit-451d001",
-    "@dcl/sdk": "^7.27.1-33533530571.commit-451d001"
+    "@dcl/sdk": "7.27.1-33533530571.commit-451d001"
   },
   "engines": {
     "node": ">=16.0.0",

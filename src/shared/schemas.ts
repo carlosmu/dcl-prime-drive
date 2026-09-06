@@ -18,6 +18,25 @@ export const TrackRecord = engine.defineComponent('primedrive:TrackRecord', {
 // Solo el servidor puede tocarlo. Un cliente que intente escribirlo es ignorado.
 TrackRecord.validateBeforeChange((value) => value.senderAddress === AUTH_SERVER_PEER_ID)
 
+/**
+ * Latido del servidor, para diagnostico.
+ *
+ * Va como componente sincronizado a proposito: si el `tick` avanza en el
+ * cliente, entonces el servidor autoritativo esta vivo Y el canal CRDT llega.
+ * Es la senal que distingue "no hay servidor" de "hay servidor pero no
+ * sincroniza", que desde la UI se ven igual.
+ */
+export const ServerHeartbeat = engine.defineComponent('primedrive:ServerHeartbeat', {
+  /** Se incrementa una vez por segundo. */
+  tick: Schemas.Int,
+  /** Segundos desde que arranco el servidor. */
+  uptimeSeconds: Schemas.Int,
+  /** Jugadores que el servidor ve conectados. */
+  connectedPlayers: Schemas.Int
+})
+
+ServerHeartbeat.validateBeforeChange((value) => value.senderAddress === AUTH_SERVER_PEER_ID)
+
 type ComponentWithEntityValidation = {
   validateBeforeChange: (entity: Entity, cb: (value: { senderAddress: string }) => boolean) => void
 }

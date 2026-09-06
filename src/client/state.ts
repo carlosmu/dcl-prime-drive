@@ -66,6 +66,8 @@ export const state = {
   crashes: 0,
   elapsedMs: 0,
   lane: 1,
+  /** La barra espaciadora (o el boton de la HUD) esta apretada ahora mismo. */
+  boosting: false,
   countdown: 0,
   invulnerableFor: 0,
   lastCheckpointSent: 0,
@@ -87,8 +89,24 @@ export const state = {
   recordHolder: '',
   recordTimeMs: 0,
 
+  // --- Diagnostico ---
+  /** Reloj monotono del cliente en segundos. Avanza siempre, aun en el menu. */
+  clock: 0,
+  /** Ultimo `tick` recibido del servidor. -1 = nunca llego ninguno. */
+  serverTick: -1,
+  serverUptimeSeconds: 0,
+  serverConnectedPlayers: 0,
+  /** Valor de `clock` cuando el tick cambio por ultima vez. */
+  serverTickAtClock: 0,
+  /** Valor de `clock` cuando llego el ultimo mensaje del servidor. */
+  lastMessageAtClock: -1,
+  messagesReceived: 0,
+  stateSynced: false,
+
   // --- UI ---
   screen: 'home' as 'home' | 'garage' | 'ranking',
+  musicOn: true,
+  debugOn: true,
   result: null as RaceResult | null,
   toast: '',
   toastTimer: 0
@@ -114,6 +132,7 @@ export function resetRunState() {
   state.crashes = 0
   state.elapsedMs = 0
   state.lane = 1
+  state.boosting = false
   state.invulnerableFor = 0
   state.lastCheckpointSent = 0
   state.resultWaitFor = 0

@@ -11,11 +11,12 @@ import {
 } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
 import { movePlayerTo } from '~system/RestrictedActions'
-import { CHECKPOINT_COUNT, RACE, TRACK, targetSpeedAt } from '../shared/config'
+import { CHECKPOINT_COUNT, RACE, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
 import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
 import { getBikeX, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
 import { hideGhost, updateGhost } from './game/ghost'
+import { updateMusic } from './game/music'
 import { playWinSfx, prefillSpawner, resetSpawner, updateSpawner } from './game/spawner'
 import { scrollTrack } from './game/track'
 import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRaceStart } from './net'
@@ -37,6 +38,8 @@ const ANCHOR_COOLDOWN = 1.5
 const RESULT_TIMEOUT = 10
 
 let anchorCooldown = 0
+/** Boost pedido desde el boton de la HUD (mobile y clic). */
+let uiBoost = false
 
 export function initRace() {
   lockPlayer()
@@ -53,12 +56,15 @@ export function initRace() {
  * para los explorers donde `InputModifier` no tiene efecto.
  */
 function lockPlayer() {
+  // El salto queda habilitado a proposito: la barra espaciadora es el boost, y
+  // un explorer que bloquea el salto puede no reportar IA_JUMP a la escena. El
+  // avatar esta oculto y anclado, asi que a lo sumo pega un salto que nadie ve.
   InputModifier.createOrReplace(engine.PlayerEntity, {
     mode: InputModifier.Mode.Standard({
       disableWalk: true,
       disableJog: true,
       disableRun: true,
-      disableJump: true,
+      disableJump: false,
       disableEmote: true
     })
   })
@@ -88,6 +94,7 @@ export function startRace() {
   prefillSpawner()
   resetBike()
   hideGhost()
+  uiBoost = false
   state.phase = 'countdown'
   state.countdown = RACE.countdownSeconds
   state.screen = 'home'
@@ -164,9 +171,11 @@ function tickResultWait(dt: number) {
 // --- Sistema ----------------------------------------------------------------
 
 function raceSystem(dt: number) {
+  state.clock += dt
   keepPlayerAnchored(dt)
   tickToast(dt)
   tickResultWait(dt)
+  updateMusic(dt)
 
   if (state.phase === 'countdown') {
     tickCountdown(dt)
@@ -176,19 +185,31 @@ function raceSystem(dt: number) {
   }
 
   if (state.phase !== 'racing') {
+    // Fuera de carrera nadie esta acelerando: si el boton de la HUD se quedo
+    // apretado porque la UI desaparecio bajo el dedo, se suelta aca.
+    state.boosting = false
+    uiBoost = false
     updateBike(dt)
     updateCamera(dt, getBikeX())
     return
   }
 
   readLaneInput()
+  readBoostInput()
   updateBike(dt)
 
   if (state.invulnerableFor > 0) state.invulnerableFor -= dt
 
   // Velocidad: sube hacia la curva objetivo, que solo depende de la distancia.
-  const target = targetSpeedAt(state.distanceM)
-  state.speed = state.speed < target ? Math.min(target, state.speed + RACE.recoverRate * dt) : target
+  // Con el boost apretado el objetivo es esa misma curva multiplicada; al
+  // soltarlo la moto baja frenando, no de un frame al otro.
+  const target = state.boosting ? boostedSpeedAt(state.distanceM) : targetSpeedAt(state.distanceM)
+  if (state.speed < target) {
+    const rate = state.boosting ? RACE.boostRate : RACE.recoverRate
+    state.speed = Math.min(target, state.speed + rate * dt)
+  } else {
+    state.speed = Math.max(target, state.speed - RACE.boostFalloffRate * dt)
+  }
 
   const delta = state.speed * dt
   state.distanceM += delta
@@ -202,7 +223,7 @@ function raceSystem(dt: number) {
     onCrash: onCrash
   })
 
-  updateCamera(dt, getBikeX())
+  updateCamera(dt, getBikeX(), boostAmount())
   updateGhostPosition()
   reportCheckpoints()
 
@@ -233,6 +254,35 @@ function readLaneInput() {
   } else if (inputSystem.isTriggered(InputAction.IA_RIGHT, PointerEventType.PET_DOWN)) {
     state.lane = moveLane(1)
   }
+}
+
+/**
+ * Boost mantenido con la barra espaciadora.
+ *
+ * `isPressed` y no `isTriggered`: interesa el estado de la tecla en este frame,
+ * no el flanco de bajada. `uiBoost` es lo mismo desde el boton de la HUD, que
+ * en mobile es la unica via.
+ */
+function readBoostInput() {
+  state.boosting = uiBoost || inputSystem.isPressed(InputAction.IA_JUMP)
+}
+
+/** Boost desde el boton de la HUD: vale mientras el boton siga apretado. */
+export function setBoost(active: boolean) {
+  uiBoost = active
+}
+
+/**
+ * Cuanto boost hay ahora, de 0 a 1.
+ *
+ * Se deriva de la velocidad y no del estado de la tecla, asi que sube y baja
+ * con la rampa: la camara y la HUD acompanan en vez de saltar.
+ */
+export function boostAmount(): number {
+  const base = targetSpeedAt(state.distanceM)
+  if (base <= 0) return 0
+  const over = state.speed / base - 1
+  return Math.max(0, Math.min(1, over / (RACE.boostMultiplier - 1)))
 }
 
 /** Cambio de carril desde los botones de la UI (y desde mobile). */

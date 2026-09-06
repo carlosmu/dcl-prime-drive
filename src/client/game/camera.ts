@@ -11,18 +11,23 @@ import { TRACK } from '../../shared/config'
  * siente.
  */
 
-const HEIGHT = 3.4
-const BEHIND = 9
+const HEIGHT = 4
+const BEHIND = 10
 const LOOK_AHEAD = 16
 const LOOK_HEIGHT = 1.4
 /** Cuanto de la X de la moto copia la camara: 1 la sigue clavada, 0 no se mueve. */
 const X_FOLLOW = 0.55
 /** Suavizado del seguimiento lateral. */
 const X_RESPONSE = 4
+/** Cuanto se despega la camara hacia atras con el boost a fondo, en metros. */
+const BOOST_PULLBACK = 2.6
+/** Suavizado de ese retroceso. */
+const BOOST_RESPONSE = 3
 
 let cameraEntity: Entity = engine.RootEntity
 let lookTarget: Entity = engine.RootEntity
 let cameraX = TRACK.centerX
+let boostBlend = 0
 
 export function buildCamera() {
   lookTarget = engine.addEntity()
@@ -45,10 +50,19 @@ export function activateCamera() {
   MainCamera.createOrReplace(engine.CameraEntity, { virtualCameraEntity: cameraEntity })
 }
 
-export function updateCamera(dt: number, bikeX: number) {
+/**
+ * @param boost 0 = velocidad normal, 1 = boost a fondo. La camara se abre hacia
+ * atras para que la aceleracion se vea, no solo se lea en el marcador.
+ */
+export function updateCamera(dt: number, bikeX: number, boost = 0) {
   const targetX = TRACK.centerX + (bikeX - TRACK.centerX) * X_FOLLOW
   cameraX += (targetX - cameraX) * Math.min(1, X_RESPONSE * dt)
 
-  Transform.getMutable(cameraEntity).position.x = cameraX
+  const targetBoost = Math.max(0, Math.min(1, boost))
+  boostBlend += (targetBoost - boostBlend) * Math.min(1, BOOST_RESPONSE * dt)
+
+  const camera = Transform.getMutable(cameraEntity)
+  camera.position.x = cameraX
+  camera.position.z = TRACK.playerZ - BEHIND - BOOST_PULLBACK * boostBlend
   Transform.getMutable(lookTarget).position.x = bikeX
 }

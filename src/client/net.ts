@@ -3,7 +3,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { isStateSyncronized } from '@dcl/sdk/network'
 import { DEFAULT_SKIN_ID, RACE, TRACK_ID, formatTime } from '../shared/config'
 import { room } from '../shared/messages'
-import { TrackRecord } from '../shared/schemas'
+import { ServerHeartbeat, TrackRecord } from '../shared/schemas'
 import { isOnline, showToast, state } from './state'
 import { setGhostLabel } from './game/ghost'
 import { setSkin } from './game/bike'
@@ -32,6 +32,7 @@ export function initNet() {
   registerHandlers()
   engine.addSystem(handshakeSystem)
   engine.addSystem(trackRecordSystem)
+  engine.addSystem(heartbeatSystem)
 }
 
 /**
@@ -64,6 +65,23 @@ function handshakeSystem(dt: number) {
   engine.removeSystem(handshakeSystem)
 }
 
+/**
+ * Lee el latido del servidor.
+ *
+ * Es la unica senal que separa "no hay servidor" de "hay servidor pero el CRDT
+ * no llega": si el tick avanza, las dos mitades estan vivas y conectadas.
+ */
+function heartbeatSystem() {
+  state.stateSynced = isStateSyncronized()
+  for (const [, heartbeat] of engine.getEntitiesWith(ServerHeartbeat)) {
+    if (heartbeat.tick === state.serverTick) continue
+    state.serverTick = heartbeat.tick
+    state.serverUptimeSeconds = heartbeat.uptimeSeconds
+    state.serverConnectedPlayers = heartbeat.connectedPlayers
+    state.serverTickAtClock = state.clock
+  }
+}
+
 /** El record vive en un componente sincronizado, no en un mensaje. */
 function trackRecordSystem() {
   for (const [, record] of engine.getEntitiesWith(TrackRecord)) {
@@ -73,8 +91,15 @@ function trackRecordSystem() {
   }
 }
 
+/** Sello de recepcion: alimenta el "ultimo mensaje" del panel de debug. */
+function markMessage() {
+  state.messagesReceived += 1
+  state.lastMessageAtClock = state.clock
+}
+
 function registerHandlers() {
   room.onMessage('profileSync', (data) => {
+    markMessage()
     state.coins = data.coins
     state.ownedSkins = data.ownedSkins.length > 0 ? data.ownedSkins.split(',') : [DEFAULT_SKIN_ID]
     state.equippedSkin = data.equippedSkin || DEFAULT_SKIN_ID
@@ -84,6 +109,7 @@ function registerHandlers() {
   })
 
   room.onMessage('ghostSync', (data) => {
+    markMessage()
     state.ghostAvailable = data.available
     state.ghostName = data.ownerName
     state.ghostTotalMs = data.totalMs
@@ -92,14 +118,17 @@ function registerHandlers() {
   })
 
   room.onMessage('standings', (data) => {
+    markMessage()
     state.standings = data.entries.filter((entry) => entry.address !== state.myAddress)
   })
 
   room.onMessage('leaderboardSync', (data) => {
+    markMessage()
     state.leaderboard = data.entries.map((entry) => ({ name: entry.name, timeMs: entry.timeMs }))
   })
 
   room.onMessage('checkpointRejected', (data) => {
+    markMessage()
     state.invalidated = true
     state.invalidReason = data.reason
     showToast(`Carrera invalidada: ${data.reason}`, 6)
@@ -107,6 +136,7 @@ function registerHandlers() {
   })
 
   room.onMessage('raceResult', (data) => {
+    markMessage()
     state.resultWaitFor = 0
     if (state.result) {
       state.result.pending = false
@@ -124,6 +154,7 @@ function registerHandlers() {
   })
 
   room.onMessage('shopResult', (data) => {
+    markMessage()
     if (!data.ok) {
       showToast(data.reason, 3)
       return

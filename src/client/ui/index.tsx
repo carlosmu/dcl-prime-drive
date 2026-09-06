@@ -1,5 +1,6 @@
 import ReactEcs, { ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { state } from '../state'
+import { DebugPanel } from './debug'
 import { Hud } from './hud'
 import { Menu } from './menu'
 import { Results } from './results'
@@ -19,6 +20,7 @@ const Root = () => (
     {state.phase === 'menu' ? <Menu /> : null}
     {state.phase === 'finished' || state.phase === 'wrecked' ? <Results /> : null}
     {state.toast.length > 0 ? <Toast /> : null}
+    {state.debugOn ? <DebugPanel /> : null}
   </UiEntity>
 )
 

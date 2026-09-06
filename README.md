@@ -18,6 +18,29 @@ npm run start
 El preview levanta también el servidor autoritativo (`authoritativeMultiplayer: true` en
 `scene.json` lo dispara solo). Los logs del server salen con el prefijo `[Server]`.
 
+### Por qué `npm start` pasa por `scripts/start.js`
+
+sdk-commands elige el motor `bevy` por defecto, y esa implementación es un `.exe` nativo
+**sin firmar**. En Windows con Smart App Control o WDAC activo, Code Integrity lo bloquea:
+el preview levanta, el servidor muere con `spawn UNKNOWN` y la escena queda sin servidor
+sin decir por qué.
+
+`scripts/start.js` fuerza `DCL_SERVER_ENGINE=hammurabi`, que es JS puro y corre bajo
+`node.exe` — firmado y confiable para la política. Arranca sin tocar nada del sistema.
+
+- `npm start` → hammurabi (el default de este proyecto).
+- `npm run start:bevy` → el comportamiento original de sdk-commands.
+- `DCL_SERVER_ENGINE=bevy npm start` → también fuerza bevy; la variable ya seteada gana.
+
+**Si preview desde el Creator Hub**, el Hub no pasa por `npm start`, así que hay que dejar
+la variable a nivel usuario una vez:
+
+```
+setx DCL_SERVER_ENGINE hammurabi
+```
+
+y reiniciar el Hub.
+
 > **Antes de deployar hay que tocar dos campos de `scene.json`:**
 > - `worldConfiguration.name` — hoy dice `prime-drive.dcl.eth`; poné tu DCL NAME o ENS.
 > - `logsPermissions` — hoy tiene una address en cero; poné tu wallet o no vas a ver los
@@ -95,6 +118,21 @@ servidor aparece más tarde la escena pasa a online sola, sin recargar.
 Esto no es solo por comodidad de desarrollo: un jugador al que se le cae la conexión no
 puede quedarse con un botón muerto.
 
+### Panel de debug
+
+Abajo al centro hay un panel con el estado de la conexión, que se apaga desde el menú.
+El dato que importa es **`server tick`**: el servidor lo incrementa una vez por segundo y
+viaja como componente sincronizado (`ServerHeartbeat` en `shared/schemas.ts`).
+
+| lo que muestra | qué significa |
+|---|---|
+| tick avanzando | servidor vivo y CRDT llegando |
+| `--` | nunca llegó un latido: no hay servidor |
+| congelado en un número | el servidor arrancó y después se cortó |
+
+`stateSynced` es el `isStateSyncronized()` crudo, y `msgs` cuenta los mensajes recibidos:
+juntos separan un problema de CRDT de uno del bus de mensajes.
+
 ## Servidor autoritativo
 
 El cliente simula la carrera; el servidor decide qué vale. Nada de lo que reporta el
@@ -153,6 +191,11 @@ Se gastan en el garage, en las 4 skins de moto (0 / 1500 / 4000 / 9000).
 La calzada, las banquinas y los rieles de neón son primitivas con material PBR: cero
 texturas y 5 entidades para los 320 m de pista.
 
+`assets/sounds/music.mp3` es la música de fondo: suena en loop desde que carga la escena,
+a volumen bajo en el menú y más alta en carrera, con un toggle en el menú. Pesa 4 MB —
+es de lejos el archivo más grande del proyecto, así que si el deploy queda pesado, ese es
+el primero que conviene recomprimir.
+
 ## Ajustes rápidos
 
 | qué | dónde |
@@ -162,5 +205,6 @@ texturas y 5 entidades para los 320 m de pista.
 | Densidad de monedas, obstáculos y edificios | `shared/config.ts` → `SPAWN` |
 | Precios y modelos de las skins | `shared/config.ts` → `SKINS` |
 | Bonus y tope de monedas | `shared/config.ts` → `ECONOMY` |
-| Si la moto sale de espaldas | `client/game/bike.ts` → `BIKE_YAW_DEG` (poné 0) |
+| Orientación de la moto y del ghost | `client/game/bike.ts` → `BIKE_YAW_DEG` |
 | Distancia y altura de cámara | `client/game/camera.ts` |
+| Volumen de la música en menú y en carrera | `client/game/music.ts` |

@@ -10,6 +10,7 @@ import {
 } from '@dcl/sdk/ecs'
 import { Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { RACE, TRACK, findSkin } from '../../shared/config'
+import { BIKE_YAW_DEG } from './bike'
 
 /**
  * Ghost del record de la pista.
@@ -34,7 +35,7 @@ export function buildGhost() {
   root = engine.addEntity()
   Transform.create(root, {
     position: Vector3.create(TRACK.centerX, TRACK.roadY + 0.25, TRACK.playerZ),
-    rotation: Quaternion.fromEulerDegrees(0, 180, 0)
+    rotation: Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, 0)
   })
   GltfContainer.create(root, { src: GHOST_SKIN.model })
   Animator.create(root, {

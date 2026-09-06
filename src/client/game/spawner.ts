@@ -24,7 +24,7 @@ const WIN_SFX = 'assets/sounds/won.mp3'
 const LOOKAHEAD_M = TRACK.spawnZ - TRACK.playerZ
 
 const PARKED_Y = -200
-const COIN_Y = 1.4
+const COIN_Y = 0.4
 const COIN_POOL_SIZE = 44
 const OBSTACLE_POOL_SIZE = 20
 const ARCH_POOL_SIZE = 4

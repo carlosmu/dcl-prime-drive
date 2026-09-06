@@ -2,11 +2,12 @@ import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 import { RACE, formatDistance, formatTime } from '../../shared/config'
 import { livesLeft, state } from '../state'
-import { abortRace, changeLane } from '../race'
+import { abortRace, boostAmount, changeLane, setBoost } from '../race'
 import { COLORS, ProgressBar, Text } from './theme'
 
 /** HUD de carrera: tiempo, monedas, vidas y la comparacion con los rivales. */
 export const Hud = () => {
+  const boost = boostAmount()
   const progress = state.distanceM / RACE.distanceM
   const ghostProgress = state.ghostDistanceM / RACE.distanceM
 
@@ -43,11 +44,11 @@ export const Hud = () => {
             color={COLORS.textDim}
           />
           <Text
-            value={`${Math.round(state.speed * 3.6)} km/h`}
+            value={`${Math.round(state.speed * 3.6)} km/h${boost > 0.05 ? '  >>' : ''}`}
             size={30}
             width="21%"
             align="middle-center"
-            color={COLORS.accent}
+            color={boost > 0.05 ? COLORS.gold : COLORS.accent}
           />
           <Text
             value={`${state.runCoins} monedas`}
@@ -131,9 +132,25 @@ export const Hud = () => {
         <LaneButton label=">" direction={1} />
       </UiEntity>
 
+      {/* Boost: se mantiene apretado. onMouseLeave lo suelta si el dedo se corre. */}
+      <Button
+        value="BOOST"
+        variant={boost > 0.05 ? 'primary' : 'secondary'}
+        fontSize={30}
+        onMouseDown={() => setBoost(true)}
+        onMouseUp={() => setBoost(false)}
+        onMouseLeave={() => setBoost(false)}
+        uiTransform={{
+          width: 220,
+          height: 150,
+          positionType: 'absolute',
+          position: { bottom: 60, left: 452 }
+        }}
+      />
+
       <UiEntity
         uiTransform={{
-          width: 320,
+          width: 380,
           height: 44,
           positionType: 'absolute',
           position: { bottom: 130, right: 60 }
@@ -142,6 +159,21 @@ export const Hud = () => {
           value: 'A / D para cambiar de carril',
           fontSize: 20,
           color: COLORS.textDim,
+          textAlign: 'middle-right'
+        }}
+      />
+
+      <UiEntity
+        uiTransform={{
+          width: 380,
+          height: 44,
+          positionType: 'absolute',
+          position: { bottom: 168, right: 60 }
+        }}
+        uiText={{
+          value: 'ESPACIO mantenido para acelerar',
+          fontSize: 20,
+          color: boost > 0.05 ? COLORS.gold : COLORS.textDim,
           textAlign: 'middle-right'
         }}
       />

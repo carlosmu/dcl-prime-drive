@@ -52,6 +52,12 @@ export const RACE = {
   crashSpeed: 14,
   /** Aceleración con la que recupera la velocidad objetivo, en m/s². */
   recoverRate: 14,
+  /** Multiplicador de velocidad mientras se mantiene el boost (barra espaciadora). */
+  boostMultiplier: 1.4,
+  /** Aceleración al entrar en boost, en m/s². */
+  boostRate: 30,
+  /** Desaceleración al soltar el boost, en m/s². */
+  boostFalloffRate: 24,
   /** Choques que terminan la carrera. */
   lives: 3,
   /** Segundos de invulnerabilidad tras un choque. */
@@ -72,17 +78,28 @@ export function targetSpeedAt(distanceM: number): number {
 }
 
 /**
+ * Velocidad objetivo con el boost mantenido. Es el techo absoluto de la moto:
+ * `idealTimeMs` integra esta curva, no la de `targetSpeedAt`.
+ */
+export function boostedSpeedAt(distanceM: number): number {
+  return targetSpeedAt(distanceM) * RACE.boostMultiplier
+}
+
+/**
  * Tiempo mínimo teórico para recorrer `distanceM`, en ms.
  *
- * Con v(d) = a + k·d, integrar dt = dd/v(d) da t = ln((a + k·d)/a) / k.
- * Es el suelo absoluto: cualquier carrera real tarda más (choques, frenadas).
- * El servidor rechaza cualquier checkpoint por debajo de este número.
+ * Con v(d) = (a + k·d)·m, integrar dt = dd/v(d) da t = ln((a + k·d)/a) / (k·m).
+ * El factor `m` es el boost: el piso asume la carrera perfecta con la barra
+ * espaciadora apretada de punta a punta, que es lo más rápido que la escena
+ * puede ir. Sin él, una carrera legítima con boost caería por debajo del piso
+ * y el servidor la rechazaría.
  */
 export function idealTimeMs(distanceM: number): number {
   const d = Math.max(0, distanceM)
   const a = RACE.baseSpeed
-  if (SPEED_SLOPE <= 0) return (d / a) * 1000
-  return (Math.log((a + SPEED_SLOPE * d) / a) / SPEED_SLOPE) * 1000
+  const m = RACE.boostMultiplier
+  if (SPEED_SLOPE <= 0) return (d / (a * m)) * 1000
+  return (Math.log((a + SPEED_SLOPE * d) / a) / (SPEED_SLOPE * m)) * 1000
 }
 
 /** Margen de tolerancia sobre `idealTimeMs` (lag, jitter de frames). */

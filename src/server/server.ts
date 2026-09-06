@@ -3,7 +3,7 @@ import { syncEntity } from '@dcl/sdk/network'
 import { EnvVar } from '@dcl/sdk/server'
 import { CHECKPOINT_COUNT, ECONOMY, SKINS, TRACK_ID, findSkin } from '../shared/config'
 import { room } from '../shared/messages'
-import { TrackRecord, protectServerEntity } from '../shared/schemas'
+import { ServerHeartbeat, TrackRecord, protectServerEntity } from '../shared/schemas'
 import {
   GhostRecord,
   loadGhost,
@@ -29,6 +29,8 @@ const runs = new Map<string, RunState>()
 const names = new Map<string, string>()
 
 let recordEntity = engine.RootEntity
+let heartbeatEntity = engine.RootEntity
+let uptimeSeconds = 0
 let standingsTimer = 0
 let presenceTimer = 0
 
@@ -55,6 +57,12 @@ export async function initServer() {
   })
   protectServerEntity(recordEntity, [Transform])
   syncEntity(recordEntity, [Transform.componentId, TrackRecord.componentId], 1)
+
+  heartbeatEntity = engine.addEntity()
+  Transform.create(heartbeatEntity, { position: { x: 0, y: -10, z: 0 } })
+  ServerHeartbeat.create(heartbeatEntity, { tick: 0, uptimeSeconds: 0, connectedPlayers: 0 })
+  protectServerEntity(heartbeatEntity, [Transform])
+  syncEntity(heartbeatEntity, [Transform.componentId, ServerHeartbeat.componentId], 2)
 
   const ghost = await loadGhost()
   if (ghost) {
@@ -313,6 +321,8 @@ function serverTick(dt: number) {
   standingsTimer += dt
   if (standingsTimer >= STANDINGS_INTERVAL) {
     standingsTimer = 0
+    uptimeSeconds += STANDINGS_INTERVAL
+    beat()
     broadcastStandings()
   }
 
@@ -321,6 +331,17 @@ function serverTick(dt: number) {
     presenceTimer = 0
     dropDisconnectedRacers()
   }
+}
+
+/** Un latido por segundo. Es lo que el panel de debug del cliente muestra. */
+function beat() {
+  const heartbeat = ServerHeartbeat.getMutableOrNull(heartbeatEntity)
+  if (!heartbeat) return
+  heartbeat.tick += 1
+  heartbeat.uptimeSeconds = uptimeSeconds
+  let connected = 0
+  for (const [] of engine.getEntitiesWith(PlayerIdentityData)) connected += 1
+  heartbeat.connectedPlayers = connected
 }
 
 type StandingEntry = {

@@ -3,6 +3,7 @@ import { RACE, SKINS, formatDistance, formatTime } from '../../shared/config'
 import { isOnline, state } from '../state'
 import { startRace } from '../race'
 import { requestBuySkin, requestEquipSkin } from '../net'
+import { toggleMusic } from '../game/music'
 import { COLORS, Text } from './theme'
 
 /** Menu principal: jugar, garage y ranking. */
@@ -25,7 +26,25 @@ export const Menu = () => (
       }}
       uiBackground={{ color: COLORS.panel }}
     >
-      <Text value="PRIME DRIVE" size={54} color={COLORS.accent} />
+      <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
+        <Text value="PRIME DRIVE" size={54} width="54%" color={COLORS.accent} />
+        <Button
+          value={state.musicOn ? 'Musica: on' : 'Musica: off'}
+          variant="secondary"
+          fontSize={20}
+          onMouseDown={() => toggleMusic()}
+          uiTransform={{ width: '22%', height: 48, margin: { right: 12 } }}
+        />
+        <Button
+          value={state.debugOn ? 'Debug: on' : 'Debug: off'}
+          variant="secondary"
+          fontSize={20}
+          onMouseDown={() => {
+            state.debugOn = !state.debugOn
+          }}
+          uiTransform={{ width: '22%', height: 48 }}
+        />
+      </UiEntity>
       <Text
         value={`${formatDistance(RACE.distanceM)} - checkpoint cada ${RACE.checkpointIntervalM} m - ${RACE.lives} vidas`}
         size={22}

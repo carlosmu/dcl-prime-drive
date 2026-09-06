@@ -14,8 +14,13 @@ import { LANE_COUNT, SKINS, TRACK, findSkin, laneToX } from '../../shared/config
  * GLB y cortaria la animacion en plena carrera.
  */
 
-/** Giro en Y del modelo para que mire hacia +Z. Si la moto sale de espaldas, poner 0. */
-const BIKE_YAW_DEG = 180
+/**
+ * Giro en Y del modelo para que mire hacia +Z, que es hacia donde corre.
+ *
+ * Los GLB de moto ya vienen mirando hacia adelante, asi que no hace falta girarlos.
+ * El ghost usa los mismos modelos y lee esta misma constante.
+ */
+export const BIKE_YAW_DEG = 0
 
 /** Velocidad del cambio de carril, en m/s. */
 const LANE_SPEED = 14
