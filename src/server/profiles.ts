@@ -14,7 +14,7 @@ export type GhostRecord = {
   address: string
   name: string
   totalMs: number
-  /** ms acumulados al llegar a cada checkpoint (100 m, 200 m, ...). */
+  /** ms accumulated on reaching each checkpoint (100 m, 200 m, ...). */
   splits: number[]
 }
 
@@ -30,10 +30,10 @@ const LEADERBOARD_KEY = `leaderboard:${TRACK_ID}`
 const LEADERBOARD_SIZE = 10
 
 /**
- * Cache en memoria de los perfiles.
+ * In-memory cache of profiles.
  *
- * Storage es asincrono y los handlers de mensaje responden en el acto, asi que
- * el estado vivo de la partida sale de aca; Storage es solo la persistencia.
+ * Storage is async and message handlers respond immediately, so the live
+ * game state comes from here; Storage is only the persistence layer.
  */
 const cache = new Map<string, PlayerProfile>()
 
@@ -48,7 +48,7 @@ function emptyProfile(): PlayerProfile {
   }
 }
 
-/** Descarta ids de skin que ya no existen en el catalogo tras un rebalanceo. */
+/** Discards skin ids that no longer exist in the catalog after a rebalance. */
 function sanitize(profile: PlayerProfile): PlayerProfile {
   const known = new Set(SKINS.map((s) => s.id))
   const owned = (profile.ownedSkins || []).filter((id) => known.has(id))
@@ -73,16 +73,16 @@ export async function loadProfile(address: string): Promise<PlayerProfile> {
     const stored = await Storage.player.get<Partial<PlayerProfile>>(address, PROFILE_KEY)
     if (stored) profile = sanitize({ ...emptyProfile(), ...stored })
   } catch (error) {
-    console.log(`[Server] no se pudo leer el perfil de ${address}:`, error)
+    console.log(`[Server] could not read profile for ${address}:`, error)
   }
-  // Otra llamada concurrente puede haber cargado el perfil mientras esperabamos.
+  // Another concurrent call may have loaded the profile while we were waiting.
   const raced = cache.get(address)
   if (raced) return raced
   cache.set(address, profile)
   return profile
 }
 
-/** Perfil ya cargado en memoria, sin ir a Storage. */
+/** Profile already loaded in memory, without hitting Storage. */
 export function peekProfile(address: string): PlayerProfile | undefined {
   return cache.get(address)
 }
@@ -93,11 +93,11 @@ export async function saveProfile(address: string, profile: PlayerProfile): Prom
   try {
     await Storage.player.set(address, PROFILE_KEY, clean)
   } catch (error) {
-    console.log(`[Server] no se pudo guardar el perfil de ${address}:`, error)
+    console.log(`[Server] could not save profile for ${address}:`, error)
   }
 }
 
-// --- Ghost y leaderboard (scene storage, compartidos) -----------------------
+// --- Ghost and leaderboard (shared scene storage) -----------------------
 
 let ghostCache: GhostRecord | null = null
 let ghostLoaded = false
@@ -107,7 +107,7 @@ export async function loadGhost(): Promise<GhostRecord | null> {
   try {
     ghostCache = await Storage.get<GhostRecord>(GHOST_KEY)
   } catch (error) {
-    console.log('[Server] no se pudo leer el ghost:', error)
+    console.log('[Server] could not read ghost:', error)
     ghostCache = null
   }
   ghostLoaded = true
@@ -120,7 +120,7 @@ export async function saveGhost(record: GhostRecord): Promise<void> {
   try {
     await Storage.set(GHOST_KEY, record)
   } catch (error) {
-    console.log('[Server] no se pudo guardar el ghost:', error)
+    console.log('[Server] could not save ghost:', error)
   }
 }
 
@@ -132,13 +132,13 @@ export async function loadLeaderboard(): Promise<LeaderboardEntry[]> {
     const stored = await Storage.get<LeaderboardEntry[]>(LEADERBOARD_KEY)
     leaderboardCache = Array.isArray(stored) ? stored : []
   } catch (error) {
-    console.log('[Server] no se pudo leer el leaderboard:', error)
+    console.log('[Server] could not read leaderboard:', error)
     leaderboardCache = []
   }
   return leaderboardCache
 }
 
-/** Inserta un tiempo y devuelve el top ordenado. Un jugador ocupa una sola fila. */
+/** Inserts a time and returns the sorted top. A player occupies a single row. */
 export async function submitLeaderboardTime(entry: LeaderboardEntry): Promise<LeaderboardEntry[]> {
   const board = await loadLeaderboard()
   const existing = board.find((e) => e.address === entry.address)
@@ -154,7 +154,7 @@ export async function submitLeaderboardTime(entry: LeaderboardEntry): Promise<Le
   try {
     await Storage.set(LEADERBOARD_KEY, leaderboardCache)
   } catch (error) {
-    console.log('[Server] no se pudo guardar el leaderboard:', error)
+    console.log('[Server] could not save leaderboard:', error)
   }
   return leaderboardCache
 }

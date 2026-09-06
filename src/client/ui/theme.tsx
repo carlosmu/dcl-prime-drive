@@ -1,7 +1,7 @@
 import ReactEcs, { PositionUnit, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 
-/** Paleta y piezas de UI reutilizadas por las tres pantallas. */
+/** Palette and UI pieces reused by the three screens. */
 export const COLORS = {
   panel: Color4.create(0.04, 0.05, 0.09, 0.92),
   panelSoft: Color4.create(0.09, 0.11, 0.18, 0.85),
@@ -59,10 +59,10 @@ export const Text = (props: {
 )
 
 /**
- * Barra de progreso horizontal.
+ * Horizontal progress bar.
  *
- * `markers` son los rivales y el ghost: se dibujan como muescas sobre la misma
- * barra, para comparar de un vistazo sin leer numeros.
+ * `markers` are the rivals and the ghost: they're drawn as notches on the
+ * same bar, to compare at a glance without reading numbers.
  */
 export const ProgressBar = (props: {
   progress: number

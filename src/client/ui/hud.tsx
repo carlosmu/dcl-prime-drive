@@ -5,7 +5,7 @@ import { livesLeft, state } from '../state'
 import { abortRace, boostAmount, changeLane, setBoost } from '../race'
 import { COLORS, ProgressBar, Text } from './theme'
 
-/** HUD de carrera: tiempo, monedas, vidas y la comparacion con los rivales. */
+/** Race HUD: time, coins, lives, and comparison with rivals. */
 export const Hud = () => {
   const boost = boostAmount()
   const progress = state.distanceM / RACE.distanceM
@@ -21,14 +21,13 @@ export const Hud = () => {
 
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
-      {/* Barra superior */}
+      {/* Top bar */}
       <UiEntity
         uiTransform={{
-          width: 1120,
+          width: '40%',
           height: 132,
           positionType: 'absolute',
-          position: { top: 24, left: '50%' },
-          margin: { left: -560 },
+          position: { top: 24, left: '30%' },
           flexDirection: 'column',
           padding: { left: 24, right: 24, top: 12, bottom: 12 }
         }}
@@ -51,7 +50,7 @@ export const Hud = () => {
             color={boost > 0.05 ? COLORS.gold : COLORS.accent}
           />
           <Text
-            value={`${state.runCoins} monedas`}
+            value={`${state.runCoins} coins`}
             size={30}
             width="21%"
             align="middle-right"
@@ -65,14 +64,14 @@ export const Hud = () => {
 
         <UiEntity uiTransform={{ width: '100%', height: 34, flexDirection: 'row', margin: { top: 6 } }}>
           <Text
-            value={`Vidas ${'#'.repeat(livesLeft())}${'.'.repeat(RACE.lives - livesLeft())}`}
+            value={`Lives ${'#'.repeat(livesLeft())}${'.'.repeat(RACE.lives - livesLeft())}`}
             size={22}
             width="30%"
             color={livesLeft() > 1 ? COLORS.text : COLORS.danger}
           />
           <Text value={ghostLine()} size={22} width="40%" align="middle-center" color={COLORS.ghost} />
           <Text
-            value={state.standings.length > 0 ? `${state.standings.length} en pista` : 'en solitario'}
+            value={state.standings.length > 0 ? `${state.standings.length} racing` : 'solo run'}
             size={22}
             width="30%"
             align="middle-right"
@@ -92,7 +91,7 @@ export const Hud = () => {
           }}
           uiBackground={{ color: Color4.create(0.4, 0.05, 0.05, 0.9) }}
           uiText={{
-            value: `Carrera invalidada por el servidor: ${state.invalidReason}`,
+            value: `Race invalidated by server: ${state.invalidReason}`,
             fontSize: 22,
             color: COLORS.text,
             textAlign: 'middle-center'
@@ -109,7 +108,7 @@ export const Hud = () => {
             position: { top: '38%', left: '0%' }
           }}
           uiText={{
-            value: state.countdown > 1 ? `${Math.ceil(state.countdown)}` : 'YA',
+            value: state.countdown > 1 ? `${Math.ceil(state.countdown)}` : 'GO',
             fontSize: 160,
             color: COLORS.accent,
             textAlign: 'middle-center'
@@ -117,7 +116,7 @@ export const Hud = () => {
         />
       ) : null}
 
-      {/* Controles tactiles / clic */}
+      {/* Touch / click controls */}
       <UiEntity
         uiTransform={{
           width: 360,
@@ -132,19 +131,19 @@ export const Hud = () => {
         <LaneButton label=">" direction={1} />
       </UiEntity>
 
-      {/* Boost: se mantiene apretado. onMouseLeave lo suelta si el dedo se corre. */}
+      {/* Boost: held down. onMouseLeave releases it if the finger slides off. */}
       <Button
         value="BOOST"
         variant={boost > 0.05 ? 'primary' : 'secondary'}
-        fontSize={30}
+        fontSize={22}
         onMouseDown={() => setBoost(true)}
         onMouseUp={() => setBoost(false)}
         onMouseLeave={() => setBoost(false)}
         uiTransform={{
-          width: 220,
-          height: 150,
+          width: 200,
+          height: 56,
           positionType: 'absolute',
-          position: { bottom: 60, left: 452 }
+          position: { bottom: 60, right: 60 }
         }}
       />
 
@@ -156,7 +155,7 @@ export const Hud = () => {
           position: { bottom: 130, right: 60 }
         }}
         uiText={{
-          value: 'A / D para cambiar de carril',
+          value: 'A / D to change lanes',
           fontSize: 20,
           color: COLORS.textDim,
           textAlign: 'middle-right'
@@ -171,7 +170,7 @@ export const Hud = () => {
           position: { bottom: 168, right: 60 }
         }}
         uiText={{
-          value: 'ESPACIO mantenido para acelerar',
+          value: 'HOLD SPACE to boost',
           fontSize: 20,
           color: boost > 0.05 ? COLORS.gold : COLORS.textDim,
           textAlign: 'middle-right'
@@ -179,15 +178,16 @@ export const Hud = () => {
       />
 
       <Button
-        value="Abandonar"
+        value="Quit"
         variant="secondary"
         fontSize={22}
         onMouseDown={() => abortRace()}
         uiTransform={{
-          width: 200,
+          width: 160,
           height: 56,
           positionType: 'absolute',
-          position: { bottom: 60, right: 60 }
+          position: { top: 62, left: '70%' },
+          margin: { left: 16 }
         }}
       />
     </UiEntity>
@@ -195,7 +195,7 @@ export const Hud = () => {
 }
 
 function ghostLine(): string {
-  if (!state.ghostAvailable || state.ghostSplits.length === 0) return 'sin ghost todavia'
+  if (!state.ghostAvailable || state.ghostSplits.length === 0) return 'no ghost yet'
   const gap = state.distanceM - state.ghostDistanceM
   const sign = gap >= 0 ? '+' : '-'
   return `${state.ghostName || 'record'}  ${sign}${Math.abs(Math.round(gap))} m`

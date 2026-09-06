@@ -13,17 +13,17 @@ import { RACE, TRACK, findSkin } from '../../shared/config'
 import { BIKE_YAW_DEG } from './bike'
 
 /**
- * Ghost del record de la pista.
+ * Track record ghost.
  *
- * El servidor manda los splits del mejor tiempo (ms en cada checkpoint de
- * 100 m). El cliente los interpola para saber en que metro iba el record a
- * este mismo instante de carrera, y coloca la moto fantasma adelante o atras
- * segun la diferencia con el jugador. Es un reloj, no una simulacion: el ghost
- * no esquiva nada ni junta monedas.
+ * The server sends the splits of the best time (ms at each 100 m checkpoint).
+ * The client interpolates them to know what meter the record was at at this
+ * same moment of the race, and places the ghost bike ahead or behind
+ * depending on the gap with the player. It's a clock, not a simulation: the
+ * ghost doesn't dodge anything or collect coins.
  */
 
 const GHOST_SKIN = findSkin('obsidian')
-/** Cuanto adelante/atras del jugador se dibuja antes de esconderlo. */
+/** How far ahead/behind the player it's drawn before hiding it. */
 const VISIBLE_AHEAD = 90
 const VISIBLE_BEHIND = 25
 
@@ -70,7 +70,7 @@ export function hideGhost() {
 }
 
 /**
- * Coloca el ghost segun la diferencia de metros con el jugador.
+ * Places the ghost based on the distance gap with the player.
  */
 export function updateGhost(playerDistanceM: number, ghostDistanceM: number) {
   const gap = ghostDistanceM - playerDistanceM

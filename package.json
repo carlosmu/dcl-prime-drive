@@ -1,7 +1,7 @@
 {
   "name": "prime-drive",
   "version": "1.0.0",
-  "description": "Prime Drive - runner de carreras de 3 carriles para Decentraland SDK7 con servidor autoritativo",
+  "description": "Prime Drive - a 3-lane racing runner for Decentraland SDK7 with an authoritative server",
   "scripts": {
     "start": "node scripts/start.js",
     "deploy": "sdk-commands deploy",

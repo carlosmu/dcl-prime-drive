@@ -6,7 +6,7 @@ import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
 import { COLORS, Text } from './theme'
 
-/** Menu principal: jugar, garage y ranking. */
+/** Main menu: race, garage, and ranking. */
 export const Menu = () => (
   <UiEntity
     uiTransform={{
@@ -29,7 +29,7 @@ export const Menu = () => (
       <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
         <Text value="PRIME DRIVE" size={54} width="54%" color={COLORS.accent} />
         <Button
-          value={state.musicOn ? 'Musica: on' : 'Musica: off'}
+          value={state.musicOn ? 'Music: on' : 'Music: off'}
           variant="secondary"
           fontSize={20}
           onMouseDown={() => toggleMusic()}
@@ -46,17 +46,17 @@ export const Menu = () => (
         />
       </UiEntity>
       <Text
-        value={`${formatDistance(RACE.distanceM)} - checkpoint cada ${RACE.checkpointIntervalM} m - ${RACE.lives} vidas`}
+        value={`${formatDistance(RACE.distanceM)} - checkpoint every ${RACE.checkpointIntervalM} m - ${RACE.lives} lives`}
         size={22}
         color={COLORS.textDim}
       />
 
       <UiEntity uiTransform={{ width: '100%', height: 56, flexDirection: 'row', margin: { top: 18 } }}>
-        <Tab id="home" label="Carrera" />
+        <Tab id="home" label="Race" />
         <Tab id="garage" label="Garage" />
         <Tab id="ranking" label="Ranking" />
         <Text
-          value={`${state.coins} monedas`}
+          value={`${state.coins} coins`}
           size={28}
           width="30%"
           align="middle-right"
@@ -90,8 +90,8 @@ const Home = () => (
     <Text
       value={
         state.recordTimeMs > 0
-          ? `Record de la pista: ${formatTime(state.recordTimeMs)} - ${state.recordHolder}`
-          : 'Nadie completo la pista todavia. El primero en llegar deja el ghost.'
+          ? `Track record: ${formatTime(state.recordTimeMs)} - ${state.recordHolder}`
+          : 'Nobody has completed the track yet. The first to finish leaves the ghost.'
       }
       size={24}
       color={COLORS.ghost}
@@ -99,10 +99,10 @@ const Home = () => (
     <Text
       value={
         state.bestTimeMs > 0
-          ? `Tu mejor tiempo: ${formatTime(state.bestTimeMs)}${
-              state.racesFinished > 0 ? ` en ${state.racesFinished} carreras` : ' (local)'
+          ? `Your best time: ${formatTime(state.bestTimeMs)}${
+              state.racesFinished > 0 ? ` in ${state.racesFinished} races` : ' (local)'
             }`
-          : 'Todavia no completaste una carrera.'
+          : "You haven't completed a race yet."
       }
       size={24}
       color={COLORS.textDim}
@@ -111,18 +111,18 @@ const Home = () => (
     <Text
       value={
         state.standings.length > 0
-          ? `${state.standings.length} corriendo ahora: ${state.standings
+          ? `${state.standings.length} racing now: ${state.standings
               .slice(0, 3)
               .map((r) => `${r.name} ${formatDistance(r.distanceM)}`)
               .join('  |  ')}`
-          : 'No hay nadie mas en pista ahora mismo.'
+          : 'Nobody else is racing right now.'
       }
       size={22}
       color={COLORS.textDim}
       marginTop={8}
     />
     <Text
-      value={'Cambia de carril con A / D o con los botones. Esquiva, junta monedas y aguanta 10 km.'}
+      value={'Change lanes with A / D or the buttons. Dodge, collect coins, and hold on for 10 km.'}
       size={22}
       color={COLORS.textDim}
       marginTop={20}
@@ -131,7 +131,7 @@ const Home = () => (
     <Text value={netStatusLine()} size={22} color={netStatusColor()} marginTop={16} />
 
     <Button
-      value={state.netStatus === 'connecting' ? 'conectando...' : 'CORRER'}
+      value={state.netStatus === 'connecting' ? 'connecting...' : 'RACE'}
       variant="primary"
       fontSize={34}
       disabled={state.netStatus === 'connecting'}
@@ -144,9 +144,9 @@ const Home = () => (
 )
 
 function netStatusLine(): string {
-  if (state.netStatus === 'online') return 'Servidor conectado: las monedas y los records se guardan.'
-  if (state.netStatus === 'connecting') return 'Buscando el servidor de carreras...'
-  return 'Sin servidor: se puede correr, pero no se acreditan monedas ni se guardan records.'
+  if (state.netStatus === 'online') return 'Server connected: coins and records are saved.'
+  if (state.netStatus === 'connecting') return 'Looking for the race server...'
+  return "No server: you can still race, but coins won't be credited and records won't be saved."
 }
 
 function netStatusColor() {
@@ -176,17 +176,17 @@ const Garage = () => (
         >
           <Text value={skin.name} size={28} width="40%" />
           <Text
-            value={owned ? 'en tu garage' : `${skin.price} monedas`}
+            value={owned ? 'in your garage' : `${skin.price} coins`}
             size={24}
             width="30%"
             color={owned ? COLORS.textDim : affordable ? COLORS.gold : COLORS.danger}
           />
           <UiEntity uiTransform={{ width: '30%', height: 56 }}>
             {equipped ? (
-              <Text value="EQUIPADA" size={24} align="middle-center" color={COLORS.accent} />
+              <Text value="EQUIPPED" size={24} align="middle-center" color={COLORS.accent} />
             ) : owned ? (
               <Button
-                value="Equipar"
+                value="Equip"
                 variant="secondary"
                 fontSize={22}
                 onMouseDown={() => requestEquipSkin(skin.id)}
@@ -194,7 +194,7 @@ const Garage = () => (
               />
             ) : (
               <Button
-                value="Comprar"
+                value="Buy"
                 variant="primary"
                 fontSize={22}
                 disabled={!affordable}
@@ -209,8 +209,8 @@ const Garage = () => (
     <Text
       value={
         isOnline()
-          ? 'El saldo y las compras los resuelve el servidor: la UI solo muestra lo que confirma.'
-          : 'El garage necesita el servidor: sin el no hay saldo que gastar.'
+          ? 'Balance and purchases are handled by the server: the UI only shows what it confirms.'
+          : "The garage needs the server: without it there's no balance to spend."
       }
       size={20}
       color={isOnline() ? COLORS.textDim : COLORS.gold}
@@ -222,7 +222,7 @@ const Garage = () => (
 const Ranking = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
     {state.leaderboard.length === 0 ? (
-      <Text value="Todavia no hay tiempos registrados en esta pista." size={24} color={COLORS.textDim} />
+      <Text value="No times recorded on this track yet." size={24} color={COLORS.textDim} />
     ) : (
       state.leaderboard.map((entry, index) => (
         <UiEntity

@@ -1,32 +1,32 @@
 /**
- * Configuración compartida entre cliente y servidor.
+ * Configuration shared between client and server.
  *
- * Todo lo que el servidor necesita para validar una carrera vive acá: si el
- * cliente y el servidor no comparten exactamente los mismos números, la
- * validación anti-cheat rechaza carreras legítimas.
+ * Everything the server needs to validate a race lives here: if the client
+ * and the server don't share exactly the same numbers, anti-cheat validation
+ * rejects legitimate races.
  */
 
-// ─── Pista ───────────────────────────────────────────────────────────────────
+// ─── Track ───────────────────────────────────────────────────────────────────
 
-/** La escena es de 4x20 parcelas: 64 m en X, 320 m en Z. */
+/** The scene is 4x20 parcels: 64 m in X, 320 m in Z. */
 export const TRACK = {
-  /** Centro de la calzada en X. */
+  /** Center of the road in X. */
   centerX: 32,
-  /** Offsets de los 3 carriles respecto a `centerX`. */
+  /** Offsets of the 3 lanes relative to `centerX`. */
   laneOffsets: [-4, 0, 4],
-  /** Z fijo del jugador. El mundo se mueve hacia él, el jugador nunca avanza. */
+  /** Fixed Z of the player. The world moves toward them, the player never advances. */
   playerZ: 24,
-  /** Z donde nacen edificios, monedas y obstáculos. */
+  /** Z where buildings, coins, and obstacles are born. */
   spawnZ: 300,
-  /** Z donde se reciclan (detrás del jugador). */
+  /** Z where they get recycled (behind the player). */
   despawnZ: 6,
-  /** Ancho de la calzada. */
+  /** Road width. */
   roadWidth: 14,
-  /** Largo del tramo de calzada dibujado. */
+  /** Length of the drawn road segment. */
   roadLength: 320,
-  /** X de las dos hileras de edificios. */
+  /** X of the two rows of buildings. */
   buildingX: [16, 48],
-  /** Altura del suelo de la calzada. */
+  /** Height of the road surface. */
   roadY: 0.05
 } as const
 
@@ -37,62 +37,62 @@ export function laneToX(lane: number): number {
   return TRACK.centerX + TRACK.laneOffsets[clamped]
 }
 
-// ─── Carrera ─────────────────────────────────────────────────────────────────
+// ─── Race ─────────────────────────────────────────────────────────────────
 
 export const RACE = {
-  /** Distancia total de una carrera, en metros. */
+  /** Total race distance, in meters. */
   distanceM: 10000,
-  /** Cada cuántos metros se reporta un checkpoint al servidor. */
+  /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
-  /** Velocidad al arrancar, en m/s. */
+  /** Speed at the start, in m/s. */
   baseSpeed: 26,
-  /** Velocidad al cruzar la meta, en m/s. */
+  /** Speed at the finish line, in m/s. */
   topSpeed: 62,
-  /** Velocidad a la que cae la moto tras chocar. */
+  /** Speed the bike drops to after crashing. */
   crashSpeed: 14,
-  /** Aceleración con la que recupera la velocidad objetivo, en m/s². */
+  /** Acceleration recovering the target speed, in m/s². */
   recoverRate: 14,
-  /** Multiplicador de velocidad mientras se mantiene el boost (barra espaciadora). */
+  /** Speed multiplier while boost is held (spacebar). */
   boostMultiplier: 1.4,
-  /** Aceleración al entrar en boost, en m/s². */
+  /** Acceleration entering boost, in m/s². */
   boostRate: 30,
-  /** Desaceleración al soltar el boost, en m/s². */
+  /** Deceleration when releasing boost, in m/s². */
   boostFalloffRate: 24,
-  /** Choques que terminan la carrera. */
+  /** Crashes that end the race. */
   lives: 3,
-  /** Segundos de invulnerabilidad tras un choque. */
+  /** Seconds of invulnerability after a crash. */
   crashInvulnerability: 1.6,
-  /** Cuenta regresiva antes de arrancar. */
+  /** Countdown before starting. */
   countdownSeconds: 3
 } as const
 
 export const CHECKPOINT_COUNT = Math.floor(RACE.distanceM / RACE.checkpointIntervalM)
 
-/** Pendiente de la rampa de velocidad: v(d) = baseSpeed + SPEED_SLOPE * d. */
+/** Slope of the speed ramp: v(d) = baseSpeed + SPEED_SLOPE * d. */
 const SPEED_SLOPE = (RACE.topSpeed - RACE.baseSpeed) / RACE.distanceM
 
-/** Velocidad objetivo a una distancia dada. Determinista: el servidor la replica. */
+/** Target speed at a given distance. Deterministic: the server replicates it. */
 export function targetSpeedAt(distanceM: number): number {
   const d = Math.max(0, Math.min(RACE.distanceM, distanceM))
   return RACE.baseSpeed + SPEED_SLOPE * d
 }
 
 /**
- * Velocidad objetivo con el boost mantenido. Es el techo absoluto de la moto:
- * `idealTimeMs` integra esta curva, no la de `targetSpeedAt`.
+ * Target speed with boost held. It's the bike's absolute ceiling:
+ * `idealTimeMs` integrates this curve, not `targetSpeedAt`'s.
  */
 export function boostedSpeedAt(distanceM: number): number {
   return targetSpeedAt(distanceM) * RACE.boostMultiplier
 }
 
 /**
- * Tiempo mínimo teórico para recorrer `distanceM`, en ms.
+ * Theoretical minimum time to cover `distanceM`, in ms.
  *
- * Con v(d) = (a + k·d)·m, integrar dt = dd/v(d) da t = ln((a + k·d)/a) / (k·m).
- * El factor `m` es el boost: el piso asume la carrera perfecta con la barra
- * espaciadora apretada de punta a punta, que es lo más rápido que la escena
- * puede ir. Sin él, una carrera legítima con boost caería por debajo del piso
- * y el servidor la rechazaría.
+ * With v(d) = (a + k·d)·m, integrating dt = dd/v(d) gives t = ln((a + k·d)/a) / (k·m).
+ * The `m` factor is the boost: the floor assumes the perfect race with the
+ * spacebar held down from end to end, which is the fastest the scene can go.
+ * Without it, a legitimate race with boost would fall below the floor and
+ * the server would reject it.
  */
 export function idealTimeMs(distanceM: number): number {
   const d = Math.max(0, distanceM)
@@ -102,26 +102,26 @@ export function idealTimeMs(distanceM: number): number {
   return (Math.log((a + SPEED_SLOPE * d) / a) / (SPEED_SLOPE * m)) * 1000
 }
 
-/** Margen de tolerancia sobre `idealTimeMs` (lag, jitter de frames). */
+/** Tolerance margin over `idealTimeMs` (lag, frame jitter). */
 export const TIME_TOLERANCE = 0.03
 
-/** Desfase máximo permitido entre el reloj del cliente y el del servidor, en ms. */
+/** Maximum allowed drift between the client's clock and the server's, in ms. */
 export const CLOCK_DRIFT_TOLERANCE_MS = 8000
 
-// ─── Economía ────────────────────────────────────────────────────────────────
+// ─── Economy ────────────────────────────────────────────────────────────────
 
 export const ECONOMY = {
-  /** Techo de monedas que el spawner puede generar cada 100 m. */
+  /** Cap on coins the spawner can generate every 100 m. */
   maxCoinsPerCheckpoint: 14,
-  /** Bonus por terminar los 10 km. */
+  /** Bonus for completing the 10 km. */
   finishBonus: 250,
-  /** Bonus extra por batir el récord de la pista. */
+  /** Extra bonus for beating the track record. */
   recordBonus: 500,
-  /** Monedas de arranque para una wallet nueva. */
+  /** Starting coins for a new wallet. */
   startingCoins: 0
 } as const
 
-/** Techo de monedas recolectables hasta cierta distancia. Tope anti-cheat. */
+/** Cap on collectible coins up to a given distance. Anti-cheat ceiling. */
 export function maxCoinsAt(distanceM: number): number {
   const checkpoints = Math.ceil(Math.max(0, distanceM) / RACE.checkpointIntervalM)
   return checkpoints * ECONOMY.maxCoinsPerCheckpoint
@@ -130,21 +130,21 @@ export function maxCoinsAt(distanceM: number): number {
 // ─── Spawner ─────────────────────────────────────────────────────────────────
 
 export const SPAWN = {
-  /** Metros entre oleadas de monedas. */
+  /** Meters between coin waves. */
   coinWaveEveryM: 46,
-  /** Monedas por oleada. */
+  /** Coins per wave. */
   coinsPerWave: [3, 4, 5, 6],
-  /** Separación en Z dentro de una oleada. */
+  /** Z spacing within a wave. */
   coinSpacingZ: 4,
-  /** Metros entre obstáculos al empezar. */
+  /** Meters between obstacles at the start. */
   obstacleEveryStartM: 90,
-  /** Metros entre obstáculos al final (la pista se endurece). */
+  /** Meters between obstacles at the end (the track gets harder). */
   obstacleEveryEndM: 38,
-  /** Metros entre edificios por lado. */
+  /** Meters between buildings per side. */
   buildingEveryM: 26,
-  /** Metros entre líneas divisorias de carril. */
+  /** Meters between lane divider stripes. */
   laneStripeEveryM: 8,
-  /** Metros entre piezas de borde de pista. */
+  /** Meters between track edge pieces. */
   trackEdgeEveryM: 4
 } as const
 
@@ -155,7 +155,7 @@ export type SkinDef = {
   name: string
   model: string
   price: number
-  /** Nombre del clip de animación de marcha dentro del .glb. */
+  /** Name of the running animation clip inside the .glb. */
   goClip: string
   idleClip: string
   tint: { r: number; g: number; b: number }
@@ -206,12 +206,12 @@ export function findSkin(id: string): SkinDef {
   return SKINS.find((s) => s.id === id) ?? SKINS[0]
 }
 
-// ─── Identificador de pista ──────────────────────────────────────────────────
+// ─── Track identifier ──────────────────────────────────────────────────
 
-/** Cambiar este id invalida récords y ghosts guardados (útil al rebalancear). */
+/** Changing this id invalidates saved records and ghosts (useful when rebalancing). */
 export const TRACK_ID = 'neon-mile-v1'
 
-// ─── Utilidades ──────────────────────────────────────────────────────────────
+// ─── Utilities ──────────────────────────────────────────────────────────────
 
 export function formatTime(totalMs: number): string {
   const safe = Math.max(0, Math.floor(totalMs))

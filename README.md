@@ -1,218 +1,229 @@
 # Prime Drive
 
-Runner de carreras de 3 carriles para Decentraland SDK7, con **servidor autoritativo**.
+A 3-lane racing runner for Decentraland SDK7, with an **authoritative server**.
 
-El jugador va montado en una moto, esquiva obstáculos y junta monedas a lo largo de
-**10 000 m**. Cada **100 m** el cliente reporta un checkpoint al servidor, que valida el
-tiempo y decide cuántas monedas se acreditan. La partida es single player, pero se corre
-comparándose contra el **ghost del récord** de la pista y contra la barra de progreso de
-los demás corredores que estén en la escena en ese momento.
+The player rides a bike, dodges obstacles, and collects coins along
+**10,000 m**. Every **100 m** the client reports a checkpoint to the server, which
+validates the time and decides how many coins to credit. It's a single-player
+match, but you race while comparing yourself against the **track record ghost**
+and against the progress bar of the other racers who happen to be in the scene
+at the same time.
 
-## Cómo correrlo
+## How to run it
 
 ```bash
 npm install
 npm run start
 ```
 
-El preview levanta también el servidor autoritativo (`authoritativeMultiplayer: true` en
-`scene.json` lo dispara solo). Los logs del server salen con el prefijo `[Server]`.
+The preview also spins up the authoritative server (`authoritativeMultiplayer: true`
+in `scene.json` triggers it automatically). Server logs come out with the
+`[Server]` prefix.
 
-### Por qué `npm start` pasa por `scripts/start.js`
+### Why `npm start` goes through `scripts/start.js`
 
-sdk-commands elige el motor `bevy` por defecto, y esa implementación es un `.exe` nativo
-**sin firmar**. En Windows con Smart App Control o WDAC activo, Code Integrity lo bloquea:
-el preview levanta, el servidor muere con `spawn UNKNOWN` y la escena queda sin servidor
-sin decir por qué.
+sdk-commands picks the `bevy` engine by default, and that implementation is an
+**unsigned** native `.exe`. On Windows with Smart App Control or WDAC enabled,
+Code Integrity blocks it: the preview comes up, the server dies with
+`spawn UNKNOWN`, and the scene is left without a server with no explanation.
 
-`scripts/start.js` fuerza `DCL_SERVER_ENGINE=hammurabi`, que es JS puro y corre bajo
-`node.exe` — firmado y confiable para la política. Arranca sin tocar nada del sistema.
+`scripts/start.js` forces `DCL_SERVER_ENGINE=hammurabi`, which is pure JS and
+runs under `node.exe` — signed and trusted by the policy. It starts up without
+touching anything on the system.
 
-- `npm start` → hammurabi (el default de este proyecto).
-- `npm run start:bevy` → el comportamiento original de sdk-commands.
-- `DCL_SERVER_ENGINE=bevy npm start` → también fuerza bevy; la variable ya seteada gana.
+- `npm start` → hammurabi (this project's default).
+- `npm run start:bevy` → sdk-commands' original behavior.
+- `DCL_SERVER_ENGINE=bevy npm start` → also forces bevy; an already-set variable wins.
 
-**Si preview desde el Creator Hub**, el Hub no pasa por `npm start`, así que hay que dejar
-la variable a nivel usuario una vez:
+**If you preview from the Creator Hub**, the Hub doesn't go through `npm start`,
+so you need to set the variable at the user level once:
 
 ```
 setx DCL_SERVER_ENGINE hammurabi
 ```
 
-y reiniciar el Hub.
+and restart the Hub.
 
-> **Antes de deployar hay que tocar dos campos de `scene.json`:**
-> - `worldConfiguration.name` — hoy dice `prime-drive.dcl.eth`; poné tu DCL NAME o ENS.
-> - `logsPermissions` — hoy tiene una address en cero; poné tu wallet o no vas a ver los
->   `console.log` del servidor.
+> **Before deploying, two fields in `scene.json` need to be updated:**
+> - `worldConfiguration.name` — currently set to `prime-drive.dcl.eth`; put your DCL NAME or ENS.
+> - `logsPermissions` — currently has a zero address; put your wallet in there or you
+>   won't see the server's `console.log` output.
 
-## Cómo se juega
+## How to play
 
-- **A / D** (o los botones de pantalla, que también sirven en mobile) cambian de carril.
-- Las monedas se juntan pasando por encima; los obstáculos nunca bloquean los 3 carriles
-  a la vez, siempre hay salida.
-- **3 choques** terminan la carrera. Un choque baja la velocidad y da 1,6 s de
-  invulnerabilidad.
-- La velocidad sube de 26 m/s a 62 m/s de forma lineal con la distancia recorrida.
+- **A / D** (or the on-screen buttons, which also work on mobile) change lanes.
+- Coins are collected by driving over them; obstacles never block all 3 lanes
+  at once — there's always an opening.
+- **3 crashes** end the race. A crash slows you down and grants 1.6 s of
+  invulnerability.
+- Speed increases linearly from 26 m/s to 62 m/s with distance traveled.
 
-## Arquitectura
+## Architecture
 
 ```
 src/
-├── index.ts                 isServer() decide qué mitad arranca
+├── index.ts                 isServer() decides which half starts
 ├── shared/
-│   ├── config.ts            pista, curva de velocidad, economía, skins
-│   ├── messages.ts          protocolo cliente ↔ servidor (registerMessages)
-│   └── schemas.ts           TrackRecord sincronizado + protectServerEntity
+│   ├── config.ts            track, speed curve, economy, skins
+│   ├── messages.ts          client ↔ server protocol (registerMessages)
+│   └── schemas.ts           synced TrackRecord + protectServerEntity
 ├── server/
-│   ├── server.ts            handlers, standings, récord, tienda
-│   ├── validation.ts        anti-cheat de checkpoints y de cierre de carrera
-│   └── profiles.ts          persistencia (Storage por jugador y de escena)
+│   ├── server.ts            handlers, standings, record, shop
+│   ├── validation.ts        checkpoint and race-finish anti-cheat
+│   └── profiles.ts          persistence (per-player and per-scene Storage)
 └── client/
-    ├── setup.ts             arranque del cliente
-    ├── race.ts              bucle de carrera, fases, input, checkpoints
-    ├── net.ts               envíos y handlers de mensajes
-    ├── state.ts             estado que lee la UI
+    ├── setup.ts             client startup
+    ├── race.ts              race loop, phases, input, checkpoints
+    ├── net.ts                message sends and handlers
+    ├── state.ts             state read by the UI
     ├── game/
-    │   ├── track.ts         calzada, rieles, edificios y postes con scroll
-    │   ├── spawner.ts       pools de monedas, obstáculos y arcos
-    │   ├── bike.ts          moto del jugador, carriles y skins
-    │   ├── camera.ts        VirtualCamera persecutora
-    │   └── ghost.ts         moto fantasma del récord
-    └── ui/                  HUD, menú/garage/ranking y resultados
+    │   ├── track.ts         road, rails, buildings, and pylons with scrolling
+    │   ├── spawner.ts       coin, obstacle, and arch pools
+    │   ├── bike.ts          player's bike, lanes, and skins
+    │   ├── camera.ts        chase VirtualCamera
+    │   └── ghost.ts         record ghost bike
+    └── ui/                  HUD, menu/garage/ranking, and results
 ```
 
-### El jugador no se mueve
+### The player doesn't move
 
-El avatar de Decentraland está **oculto** (`AvatarModifierArea` con `AMT_HIDE_AVATARS`) y
-**congelado** (`InputModifier`), anclado cerca de `z = 21`. Lo que se ve y se maneja es una
-entidad-moto que solo se desplaza en X entre los tres carriles. Todo lo demás —edificios,
-monedas, obstáculos— nace en `z = 300` y viaja hacia `z = 0`. `state.distanceM` es la única
-noción de avance.
+The Decentraland avatar is **hidden** (`AvatarModifierArea` with `AMT_HIDE_AVATARS`)
+and **frozen** (`InputModifier`), anchored near `z = 21`. What you see and control
+is a bike entity that only moves along X between the three lanes. Everything
+else — buildings, coins, obstacles — is born at `z = 300` and travels toward
+`z = 0`. `state.distanceM` is the only notion of progress.
 
-La cámara es una `VirtualCamera` detrás de la moto: la cámara normal sigue al avatar, que
-acá está quieto.
+The camera is a `VirtualCamera` behind the bike: the normal camera follows the
+avatar, which stays still here.
 
-### Nada se crea durante la carrera
+### Nothing is created during the race
 
-Todo sale de pools armados al arrancar la escena. El decorado (líneas, postes, edificios)
-son anillos de tamaño fijo que al pasar la cámara vuelven al fondo. Monedas, obstáculos y
-arcos se aparcan en `y = -200` cuando no están en uso. En ningún momento se cambia
-`GltfContainer.src` en caliente: eso recargaría el GLB y pegaría un tirón.
+Everything comes from pools set up when the scene starts. The scenery (stripes,
+pylons, buildings) consists of fixed-size rings that loop back to the rear once
+the camera passes them. Coins, obstacles, and arches are parked at `y = -200`
+when not in use. `GltfContainer.src` is never swapped on the fly: that would
+reload the GLB and cause a stutter.
 
-Las 4 skins de moto se instancian todas al inicio y se alternan con `VisibilityComponent`.
+All 4 bike skins are instantiated at startup and toggled with
+`VisibilityComponent`.
 
-### Detección de colisiones por cruce, no por proximidad
+### Crossing-based collision detection, not proximity-based
 
-A 62 m/s y 30 fps un objeto avanza 2 m por frame. Una ventana de distancia se lo saltaría,
-así que el test es de **cruce del plano del jugador**: `zAnterior > playerZ && zNuevo <= playerZ`.
-Exacto a cualquier velocidad.
+At 62 m/s and 30 fps, an object advances 2 m per frame. A distance window
+would skip right over it, so the test checks **crossing the player's plane**:
+`previousZ > playerZ && newZ <= playerZ`. Accurate at any speed.
 
-## El servidor es opcional para jugar
+## The server is optional to play
 
-Si el room autoritativo no sincroniza en 6 s, la escena pasa a **offline**: se corre igual,
-pero no se acreditan monedas, no se guardan récords y el garage queda deshabilitado. El
-menú lo dice explícitamente y el handshake sigue reintentando de fondo, así que si el
-servidor aparece más tarde la escena pasa a online sola, sin recargar.
+If the authoritative room doesn't sync within 6 s, the scene switches to
+**offline**: the race still runs, but no coins are credited, no records are
+saved, and the garage is disabled. The menu says so explicitly, and the
+handshake keeps retrying in the background, so if the server shows up later
+the scene switches to online on its own, without reloading.
 
-Esto no es solo por comodidad de desarrollo: un jugador al que se le cae la conexión no
-puede quedarse con un botón muerto.
+This isn't just a development convenience: a player whose connection drops
+shouldn't be left with a dead button.
 
-### Panel de debug
+### Debug panel
 
-Abajo al centro hay un panel con el estado de la conexión, que se apaga desde el menú.
-El dato que importa es **`server tick`**: el servidor lo incrementa una vez por segundo y
-viaja como componente sincronizado (`ServerHeartbeat` en `shared/schemas.ts`).
+At the bottom center there's a panel showing connection status, which can be
+turned off from the menu. The value that matters is **`server tick`**: the
+server increments it once per second and it travels as a synced component
+(`ServerHeartbeat` in `shared/schemas.ts`).
 
-| lo que muestra | qué significa |
+| what it shows | what it means |
 |---|---|
-| tick avanzando | servidor vivo y CRDT llegando |
-| `--` | nunca llegó un latido: no hay servidor |
-| congelado en un número | el servidor arrancó y después se cortó |
+| tick advancing | server alive and CRDT arriving |
+| `--` | no heartbeat ever arrived: there's no server |
+| frozen on a number | the server started and then went down |
 
-`stateSynced` es el `isStateSyncronized()` crudo, y `msgs` cuenta los mensajes recibidos:
-juntos separan un problema de CRDT de uno del bus de mensajes.
+`stateSynced` is the raw `isStateSyncronized()`, and `msgs` counts received
+messages: together they tell apart a CRDT problem from a message-bus problem.
 
-## Servidor autoritativo
+## Authoritative server
 
-El cliente simula la carrera; el servidor decide qué vale. Nada de lo que reporta el
-cliente se acepta sin pasar por `server/validation.ts`.
+The client simulates the race; the server decides what counts. Nothing the
+client reports is accepted without going through `server/validation.ts`.
 
-**Qué valida un checkpoint:**
+**What a checkpoint validates:**
 
-1. Índice consecutivo (saltarse uno invalida la carrera).
-2. `elapsedMs` monótono creciente.
-3. `elapsedMs >= idealTimeMs(distancia) * 0.97`. `idealTimeMs` es la integral cerrada de la
-   curva de velocidad: con `v(d) = a + k·d`, `t = ln((a + k·d)/a) / k`. Es el piso físico
-   absoluto, ninguna carrera real puede bajarlo.
-4. El reloj del cliente no puede separarse más de 8 s del reloj del servidor.
-5. Monedas y choques no retroceden, y las monedas no superan lo que el spawner puede
-   generar en esa distancia (`maxCoinsAt`).
+1. Consecutive index (skipping one invalidates the race).
+2. `elapsedMs` monotonically increasing.
+3. `elapsedMs >= idealTimeMs(distance) * 0.97`. `idealTimeMs` is the closed-form
+   integral of the speed curve: with `v(d) = a + k·d`, `t = ln((a + k·d)/a) / k`.
+   It's the absolute physical floor — no legitimate race can go below it.
+4. The client's clock can't drift more than 8 s from the server's clock.
+5. Coins and crashes can't go backwards, and coins can't exceed what the
+   spawner can generate at that distance (`maxCoinsAt`).
 
-El primer checkpoint rechazado marca la carrera como inválida: a partir de ahí no paga
-nada, aunque el jugador llegue a la meta.
+The first rejected checkpoint marks the race as invalid: from that point on it
+pays out nothing, even if the player reaches the finish line.
 
-> El servidor **no puede ver la posición real del jugador** en esta escena, porque el avatar
-> está quieto y es el mundo el que se mueve. La autoridad se apoya en lo que sí controla:
-> su propio reloj, la curva de velocidad determinista de `shared/config.ts` y el techo de
-> monedas por tramo. Si en el futuro se quiere una verificación posicional, hay que mover
-> al avatar de verdad y leerlo con `PlayerIdentityData` + `Transform`.
+> The server **cannot see the player's real position** in this scene, because
+> the avatar stays still and it's the world that moves. Authority relies on
+> what it does control: its own clock, the deterministic speed curve from
+> `shared/config.ts`, and the coin cap per segment. If positional verification
+> is ever needed, the avatar would have to actually move and be read via
+> `PlayerIdentityData` + `Transform`.
 
-**Persistencia** (`@dcl/sdk/server` `Storage`):
+**Persistence** (`@dcl/sdk/server` `Storage`):
 
-| clave | scope | contenido |
+| key | scope | contents |
 |---|---|---|
-| `profile` | jugador | monedas, skins compradas, skin equipada, mejor tiempo, carreras |
-| `ghost:<trackId>` | escena | splits del récord vigente, que se reproduce como ghost |
-| `leaderboard:<trackId>` | escena | top 10 de tiempos |
+| `profile` | player | coins, purchased skins, equipped skin, best time, races |
+| `ghost:<trackId>` | scene | splits of the current record, replayed as a ghost |
+| `leaderboard:<trackId>` | scene | top 10 times |
 
-Cambiar `TRACK_ID` en `shared/config.ts` invalida récords y ghosts guardados — útil al
-rebalancear la pista.
+Changing `TRACK_ID` in `shared/config.ts` invalidates saved records and
+ghosts — useful when rebalancing the track.
 
-**Variables de entorno** (`.env` en local, `npm run deploy-env` en producción):
+**Environment variables** (`.env` locally, `npm run deploy-env` in production):
 
-| variable | default | efecto |
+| variable | default | effect |
 |---|---|---|
-| `COIN_MULTIPLIER` | `1` | multiplica las monedas acreditadas al terminar |
+| `COIN_MULTIPLIER` | `1` | multiplies the coins credited at the end |
 
-## Economía
+## Economy
 
-Las monedas se acreditan **solo al cerrar la carrera** y solo si el servidor la aceptó:
-lo recolectado (con tope), más 250 por completar los 10 km, más 500 si es récord nuevo.
-Se gastan en el garage, en las 4 skins de moto (0 / 1500 / 4000 / 9000).
+Coins are credited **only when the race ends** and only if the server accepted
+it: what was collected (capped), plus 250 for completing the 10 km, plus 500
+for a new record. They're spent in the garage, on the 4 bike skins
+(0 / 1500 / 4000 / 9000).
 
 ## Assets
 
-- Del proyecto `coin-runner`: `coin.glb`, `building_01..03.glb`, `street_lines.glb` y los
-  sonidos.
-- Del catálogo OpenDCL: las 4 motos (`bike_01..04.glb`), los conos (`obstacle_cone`), el
-  arco de checkpoint (`obstacle_gate`) y los postes (`track_edge`).
+- From the `coin-runner` project: `coin.glb`, `building_01..03.glb`,
+  `street_lines.glb`, and the sound effects.
+- From the OpenDCL catalog: the 4 bikes (`bike_01..04.glb`), the cones
+  (`obstacle_cone`), the checkpoint arch (`obstacle_gate`), and the pylons
+  (`track_edge`).
 
-> **Cuidado con los GLB del catálogo que traen transformación en sus nodos.** La valla que
-> se usaba antes (`obstacle_barrier.glb`) tenía los nodos desplazados +14 m en Y y −17 m en
-> Z y escalados 8× y 15×, así que la malla aparecía lejísimos de la posición de la entidad.
-> Como la colisión se calcula contra la entidad, el jugador chocaba contra nada. Ahora la
-> valla es una primitiva: lo que se ve y lo que colisiona miden lo mismo por construcción.
-> Antes de usar un modelo nuevo como obstáculo, verificá que su bbox esté centrado en el
-> origen y que sus nodos no tengan `translation`/`scale` propios.
+> **Watch out for catalog GLBs that carry transforms on their nodes.** The
+> barrier that used to be used (`obstacle_barrier.glb`) had its nodes offset
+> +14 m in Y and −17 m in Z and scaled 8× and 15×, so the mesh appeared far
+> away from the entity's position. Since collision is calculated against the
+> entity, the player would crash into nothing. Now the barrier is a primitive:
+> what you see and what you collide with are the same size by construction.
+> Before using a new model as an obstacle, verify that its bbox is centered on
+> the origin and that its nodes don't carry their own `translation`/`scale`.
 
-La calzada, las banquinas y los rieles de neón son primitivas con material PBR: cero
-texturas y 5 entidades para los 320 m de pista.
+The road, shoulders, and neon rails are primitives with PBR material: zero
+textures and 5 entities for the 320 m of track.
 
-`assets/sounds/music.mp3` es la música de fondo: suena en loop desde que carga la escena,
-a volumen bajo en el menú y más alta en carrera, con un toggle en el menú. Pesa 4 MB —
-es de lejos el archivo más grande del proyecto, así que si el deploy queda pesado, ese es
-el primero que conviene recomprimir.
+`assets/sounds/music.mp3` is the background music: it loops from the moment
+the scene loads, at low volume in the menu and louder during the race, with a
+toggle in the menu. It weighs 4 MB — by far the largest file in the project,
+so if a deploy comes out too heavy, that's the first one worth recompressing.
 
-## Ajustes rápidos
+## Quick tweaks
 
-| qué | dónde |
+| what | where |
 |---|---|
-| Largo de carrera, checkpoints, velocidades, vidas | `shared/config.ts` → `RACE` |
-| Carriles, Z del jugador, Z de spawn | `shared/config.ts` → `TRACK` |
-| Densidad de monedas, obstáculos y edificios | `shared/config.ts` → `SPAWN` |
-| Precios y modelos de las skins | `shared/config.ts` → `SKINS` |
-| Bonus y tope de monedas | `shared/config.ts` → `ECONOMY` |
-| Orientación de la moto y del ghost | `client/game/bike.ts` → `BIKE_YAW_DEG` |
-| Distancia y altura de cámara | `client/game/camera.ts` |
-| Volumen de la música en menú y en carrera | `client/game/music.ts` |
+| Race length, checkpoints, speeds, lives | `shared/config.ts` → `RACE` |
+| Lanes, player Z, spawn Z | `shared/config.ts` → `TRACK` |
+| Coin, obstacle, and building density | `shared/config.ts` → `SPAWN` |
+| Skin prices and models | `shared/config.ts` → `SKINS` |
+| Bonus and coin cap | `shared/config.ts` → `ECONOMY` |
+| Bike and ghost orientation | `client/game/bike.ts` → `BIKE_YAW_DEG` |
+| Camera distance and height | `client/game/camera.ts` |
+| Music volume in menu and race | `client/game/music.ts` |

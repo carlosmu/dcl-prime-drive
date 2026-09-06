@@ -11,17 +11,17 @@ export type RunState = {
   address: string
   name: string
   skinId: string
-  /** Reloj del servidor al recibir `raceStart`. */
+  /** Server clock when `raceStart` was received. */
   startedAtMs: number
-  /** Último checkpoint aceptado (0 = ninguno). */
+  /** Last accepted checkpoint (0 = none). */
   lastCheckpoint: number
-  /** elapsedMs del último checkpoint aceptado. */
+  /** elapsedMs of the last accepted checkpoint. */
   lastElapsedMs: number
-  /** Splits acumulados, en ms, uno por checkpoint aceptado. */
+  /** Accumulated splits, in ms, one per accepted checkpoint. */
   splits: number[]
   coins: number
   crashes: number
-  /** Se pone en true al primer rechazo: la carrera ya no otorga nada. */
+  /** Set to true on the first rejection: the race no longer grants anything. */
   invalidated: boolean
   invalidReason: string
   finished: boolean
@@ -60,42 +60,42 @@ function reject(reason: string): ValidationResult {
 }
 
 /**
- * Valida un checkpoint contra el reloj del servidor y contra el tiempo mínimo
- * físicamente posible.
+ * Validates a checkpoint against the server's clock and the physically
+ * minimum possible time.
  *
- * El servidor no puede ver la posición real del jugador —en esta escena el
- * avatar está quieto y es el mundo el que se mueve—, así que la autoridad se
- * apoya en tres cosas que sí controla: su propio reloj, la curva de velocidad
- * determinista de `shared/config` y el techo de monedas por tramo.
+ * The server can't see the player's real position — in this scene the avatar
+ * stays still and it's the world that moves — so authority relies on three
+ * things it does control: its own clock, the deterministic speed curve from
+ * `shared/config`, and the coin cap per segment.
  */
 export function validateCheckpoint(run: RunState, report: CheckpointReport, nowMs: number): ValidationResult {
-  if (run.finished) return reject('carrera ya finalizada')
+  if (run.finished) return reject('race already finished')
   if (report.index !== run.lastCheckpoint + 1) {
-    return reject(`checkpoint fuera de orden (esperaba ${run.lastCheckpoint + 1}, llegó ${report.index})`)
+    return reject(`checkpoint out of order (expected ${run.lastCheckpoint + 1}, got ${report.index})`)
   }
-  if (report.index > CHECKPOINT_COUNT) return reject('checkpoint más allá de la meta')
-  if (report.elapsedMs <= run.lastElapsedMs) return reject('el tiempo no avanzó entre checkpoints')
+  if (report.index > CHECKPOINT_COUNT) return reject('checkpoint beyond the finish line')
+  if (report.elapsedMs <= run.lastElapsedMs) return reject('time did not advance between checkpoints')
 
   const distanceM = report.index * RACE.checkpointIntervalM
   const floorMs = idealTimeMs(distanceM) * (1 - TIME_TOLERANCE)
   if (report.elapsedMs < floorMs) {
-    return reject(`tiempo imposible: ${Math.round(report.elapsedMs)} ms para ${distanceM} m`)
+    return reject(`impossible time: ${Math.round(report.elapsedMs)} ms for ${distanceM} m`)
   }
 
-  // El reloj del cliente no puede correr más rápido que el del servidor.
+  // The client's clock can't run faster than the server's.
   const serverElapsed = nowMs - run.startedAtMs
   if (report.elapsedMs > serverElapsed + CLOCK_DRIFT_TOLERANCE_MS) {
-    return reject('reloj del cliente adelantado')
+    return reject('client clock ahead')
   }
   if (serverElapsed > report.elapsedMs + CLOCK_DRIFT_TOLERANCE_MS) {
-    return reject('reloj del cliente atrasado')
+    return reject('client clock behind')
   }
 
-  if (report.coins < run.coins) return reject('el contador de monedas retrocedió')
-  if (report.coins > maxCoinsAt(distanceM)) return reject('más monedas de las que la pista genera')
+  if (report.coins < run.coins) return reject('coin counter went backwards')
+  if (report.coins > maxCoinsAt(distanceM)) return reject('more coins than the track can generate')
 
-  if (report.crashes < run.crashes) return reject('el contador de choques retrocedió')
-  if (report.crashes > RACE.lives) return reject('más choques de los que permite la carrera')
+  if (report.crashes < run.crashes) return reject('crash counter went backwards')
+  if (report.crashes > RACE.lives) return reject('more crashes than the race allows')
 
   return OK
 }
@@ -116,37 +116,37 @@ export type FinishReport = {
   crashes: number
 }
 
-/** Valida el cierre de carrera. Una carrera invalidada antes no se rescata acá. */
+/** Validates the race finish. A race already invalidated is not rescued here. */
 export function validateFinish(run: RunState, report: FinishReport, nowMs: number): ValidationResult {
-  if (run.invalidated) return reject(run.invalidReason || 'carrera invalidada')
-  if (run.finished) return reject('carrera ya finalizada')
+  if (run.invalidated) return reject(run.invalidReason || 'race invalidated')
+  if (run.finished) return reject('race already finished')
 
-  if (report.elapsedMs < run.lastElapsedMs) return reject('el tiempo final es menor al último checkpoint')
-  if (report.coins < run.coins) return reject('el contador de monedas retrocedió')
-  if (report.coins > maxCoinsAt(report.distanceM)) return reject('más monedas de las que la pista genera')
+  if (report.elapsedMs < run.lastElapsedMs) return reject('final time is less than the last checkpoint')
+  if (report.coins < run.coins) return reject('coin counter went backwards')
+  if (report.coins > maxCoinsAt(report.distanceM)) return reject('more coins than the track can generate')
 
   const serverElapsed = nowMs - run.startedAtMs
   if (Math.abs(serverElapsed - report.elapsedMs) > CLOCK_DRIFT_TOLERANCE_MS) {
-    return reject('reloj del cliente desincronizado')
+    return reject('client clock out of sync')
   }
 
   if (report.completed) {
     if (run.lastCheckpoint < CHECKPOINT_COUNT) {
-      return reject(`meta reportada con ${run.lastCheckpoint}/${CHECKPOINT_COUNT} checkpoints`)
+      return reject(`finish reported with ${run.lastCheckpoint}/${CHECKPOINT_COUNT} checkpoints`)
     }
     if (report.elapsedMs < idealTimeMs(RACE.distanceM) * (1 - TIME_TOLERANCE)) {
-      return reject('tiempo final imposible')
+      return reject('impossible final time')
     }
   } else {
-    // Carrera abandonada: la distancia no puede superar lo que confirman los checkpoints.
+    // Abandoned race: distance can't exceed what the checkpoints confirm.
     const maxDistance = (run.lastCheckpoint + 1) * RACE.checkpointIntervalM
-    if (report.distanceM > maxDistance) return reject('distancia no respaldada por checkpoints')
+    if (report.distanceM > maxDistance) return reject('distance not backed by checkpoints')
   }
 
   return OK
 }
 
-/** Distancia confirmada por checkpoints. Es lo que se muestra a los rivales. */
+/** Distance confirmed by checkpoints. This is what's shown to rivals. */
 export function confirmedDistanceM(run: RunState): number {
   return run.lastCheckpoint * RACE.checkpointIntervalM
 }

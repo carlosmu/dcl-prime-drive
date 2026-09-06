@@ -11,8 +11,8 @@ export function setupUi() {
 }
 
 /**
- * Raiz de la UI. React-ECS re-renderiza cada frame leyendo `state` directo, sin
- * hooks: el estado del juego ya vive en un objeto mutable.
+ * UI root. React-ECS re-renders every frame reading `state` directly, with
+ * no hooks: the game state already lives in a mutable object.
  */
 const Root = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>

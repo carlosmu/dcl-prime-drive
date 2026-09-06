@@ -1,15 +1,15 @@
 import { DEFAULT_SKIN_ID, RACE } from '../shared/config'
 
 export type Phase =
-  /** Menu principal / garage. */
+  /** Main menu / garage. */
   | 'menu'
-  /** Cuenta regresiva antes de largar. */
+  /** Countdown before starting. */
   | 'countdown'
-  /** Corriendo. */
+  /** Racing. */
   | 'racing'
-  /** Meta cruzada, esperando la validacion del servidor. */
+  /** Finish line crossed, waiting for the server's validation. */
   | 'finished'
-  /** Se acabaron las vidas. */
+  /** Out of lives. */
   | 'wrecked'
 
 export type StandingEntry = {
@@ -28,28 +28,28 @@ export type RaceResult = {
   coinsAwarded: number
   newRecord: boolean
   pending: boolean
-  /** La carrera se corrio sin servidor: no hubo nada que acreditar. */
+  /** The race ran without a server: there was nothing to credit. */
   offline: boolean
 }
 
 /**
- * Estado de la conexion con el servidor autoritativo.
+ * Connection state with the authoritative server.
  *
- * `offline` no es un error fatal: la carrera se juega igual, solo que no se
- * acreditan monedas ni se guardan records. Se sigue reintentando de fondo.
+ * `offline` is not a fatal error: the race is still playable, it just doesn't
+ * credit coins or save records. It keeps retrying in the background.
  */
 export type NetStatus = 'connecting' | 'online' | 'offline'
 
 /**
- * Todo el estado que la UI lee y los sistemas escriben.
+ * All the state the UI reads and the systems write.
  *
- * Es un objeto plano mutable a proposito: React-ECS re-renderiza cada frame
- * leyendo de aca, sin hooks ni suscripciones.
+ * It's a plain mutable object on purpose: React-ECS re-renders every frame
+ * reading straight from here, with no hooks or subscriptions.
  */
 export const state = {
   phase: 'menu' as Phase,
 
-  // --- Perfil (autoridad del servidor) ---
+  // --- Profile (server authority) ---
   netStatus: 'connecting' as NetStatus,
   myAddress: '',
   myName: '',
@@ -59,46 +59,46 @@ export const state = {
   bestTimeMs: 0,
   racesFinished: 0,
 
-  // --- Carrera en curso ---
+  // --- Race in progress ---
   distanceM: 0,
   speed: 0,
   runCoins: 0,
   crashes: 0,
   elapsedMs: 0,
   lane: 1,
-  /** La barra espaciadora (o el boton de la HUD) esta apretada ahora mismo. */
+  /** The spacebar (or the HUD button) is held down right now. */
   boosting: false,
   countdown: 0,
   invulnerableFor: 0,
   lastCheckpointSent: 0,
-  /** Segundos que queda esperando el veredicto del servidor tras la meta. */
+  /** Seconds left waiting for the server's verdict after the finish line. */
   resultWaitFor: 0,
-  /** El servidor rechazo un checkpoint: la carrera ya no paga. */
+  /** The server rejected a checkpoint: the race no longer pays out. */
   invalidated: false,
   invalidReason: '',
 
-  // --- Comparacion ---
+  // --- Comparison ---
   ghostAvailable: false,
   ghostName: '',
   ghostTotalMs: 0,
   ghostSplits: [] as number[],
-  /** Distancia del ghost ahora mismo, en metros. */
+  /** Ghost's current distance, in meters. */
   ghostDistanceM: 0,
   standings: [] as StandingEntry[],
   leaderboard: [] as { name: string; timeMs: number }[],
   recordHolder: '',
   recordTimeMs: 0,
 
-  // --- Diagnostico ---
-  /** Reloj monotono del cliente en segundos. Avanza siempre, aun en el menu. */
+  // --- Diagnostics ---
+  /** Client's monotonic clock, in seconds. Always advances, even in the menu. */
   clock: 0,
-  /** Ultimo `tick` recibido del servidor. -1 = nunca llego ninguno. */
+  /** Last `tick` received from the server. -1 = none ever arrived. */
   serverTick: -1,
   serverUptimeSeconds: 0,
   serverConnectedPlayers: 0,
-  /** Valor de `clock` cuando el tick cambio por ultima vez. */
+  /** Value of `clock` when the tick last changed. */
   serverTickAtClock: 0,
-  /** Valor de `clock` cuando llego el ultimo mensaje del servidor. */
+  /** Value of `clock` when the last message from the server arrived. */
   lastMessageAtClock: -1,
   messagesReceived: 0,
   stateSynced: false,
@@ -143,11 +143,11 @@ export function resetRunState() {
 }
 
 /**
- * Distancia del ghost en un instante dado, interpolando sus splits.
+ * Ghost's distance at a given instant, interpolating its splits.
  *
- * `splits[i]` es el ms en que el ghost llego al metro (i+1)*100, asi que la
- * distancia entre dos splits se interpola lineal: dentro de 100 m la velocidad
- * es practicamente constante.
+ * `splits[i]` is the ms at which the ghost reached meter (i+1)*100, so the
+ * distance between two splits is interpolated linearly: within 100 m the
+ * speed is practically constant.
  */
 export function ghostDistanceAt(elapsedMs: number, splits: number[], intervalM: number): number {
   if (splits.length === 0) return 0

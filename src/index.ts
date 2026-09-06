@@ -1,5 +1,5 @@
 import { isServer } from '@dcl/sdk/network'
-// El registro de mensajes tiene que correr en ambos lados y antes de main().
+// Message registration must run on both sides and before main().
 import './shared/messages'
 import './shared/schemas'
 

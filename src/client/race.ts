@@ -22,23 +22,23 @@ import { scrollTrack } from './game/track'
 import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRaceStart } from './net'
 
 /**
- * Bucle de la carrera.
+ * Race loop.
  *
- * El jugador nunca avanza: la moto solo se desplaza en X y es el mundo el que
- * viene hacia ella. `state.distanceM` es la unica nocion de avance, y es lo que
- * se reporta al servidor cada 100 m.
+ * The player never advances: the bike only moves along X, and it's the world
+ * that comes toward it. `state.distanceM` is the only notion of progress, and
+ * it's what gets reported to the server every 100 m.
  */
 
-/** El avatar real se aparca aca, oculto y congelado. */
+/** The real avatar is parked here, hidden and frozen. */
 const ANCHOR = Vector3.create(TRACK.centerX, 0, TRACK.playerZ - 3)
-/** Si el avatar se aleja mas que esto, se lo devuelve al ancla. */
+/** If the avatar drifts further than this, it's sent back to the anchor. */
 const ANCHOR_TOLERANCE = 5
 const ANCHOR_COOLDOWN = 1.5
-/** Segundos que la pantalla de resultados espera el veredicto del servidor. */
+/** Seconds the results screen waits for the server's verdict. */
 const RESULT_TIMEOUT = 10
 
 let anchorCooldown = 0
-/** Boost pedido desde el boton de la HUD (mobile y clic). */
+/** Boost requested from the HUD button (mobile and click). */
 let uiBoost = false
 
 export function initRace() {
@@ -48,17 +48,17 @@ export function initRace() {
 }
 
 /**
- * Congela y oculta el avatar de Decentraland.
+ * Freezes and hides the Decentraland avatar.
  *
- * `InputModifier` alcanza en el cliente de escritorio; el area de avatares
- * cubre la escena entera para que tampoco se vean los avatares de los demas
- * corriendo por la pista. El re-anclaje de mas abajo es la red de seguridad
- * para los explorers donde `InputModifier` no tiene efecto.
+ * `InputModifier` is enough on the desktop client; the avatar area covers the
+ * whole scene so the other players' avatars also don't show up running down
+ * the track. The re-anchoring below is the safety net for explorers where
+ * `InputModifier` has no effect.
  */
 function lockPlayer() {
-  // El salto queda habilitado a proposito: la barra espaciadora es el boost, y
-  // un explorer que bloquea el salto puede no reportar IA_JUMP a la escena. El
-  // avatar esta oculto y anclado, asi que a lo sumo pega un salto que nadie ve.
+  // Jump is left enabled on purpose: the spacebar is the boost, and an
+  // explorer that blocks jump might not report IA_JUMP to the scene. The
+  // avatar is hidden and anchored, so at most it jumps somewhere nobody sees.
   InputModifier.createOrReplace(engine.PlayerEntity, {
     mode: InputModifier.Mode.Standard({
       disableWalk: true,
@@ -77,8 +77,8 @@ function lockPlayer() {
     excludeIds: []
   })
 
-  // Mobile: el joystick nativo no sirve con la locomocion desactivada, y los
-  // carriles se cambian con los botones de la UI. No-op en escritorio.
+  // Mobile: the native joystick doesn't work with locomotion disabled, and
+  // lanes are changed with the UI buttons. No-op on desktop.
   TouchScreenControls.hideJoystick()
   TouchScreenControls.hideCrosshair()
   TouchScreenControls.hideAll()
@@ -86,7 +86,7 @@ function lockPlayer() {
   void movePlayerTo({ newRelativePosition: ANCHOR })
 }
 
-// --- Ciclo de vida ----------------------------------------------------------
+// --- Lifecycle ----------------------------------------------------------
 
 export function startRace() {
   resetRunState()
@@ -104,12 +104,12 @@ export function startRace() {
 export function abortRace() {
   if (state.phase === 'countdown') {
     state.phase = 'menu'
-    sendRaceAbort('cancelada en la cuenta regresiva')
+    sendRaceAbort('cancelled during countdown')
     playIdle()
     return
   }
   if (state.phase !== 'racing') return
-  sendRaceAbort('abandono')
+  sendRaceAbort('quit')
   state.phase = 'menu'
   playIdle()
   hideGhost()
@@ -136,14 +136,14 @@ function endRun(completed: boolean) {
     elapsedMs: state.elapsedMs,
     coinsAwarded: 0,
     newRecord: false,
-    // Sin servidor no hay veredicto que esperar: el resultado ya es final.
+    // Without a server there's no verdict to wait for: the result is already final.
     pending: online,
     offline: !online
   }
   state.resultWaitFor = online ? RESULT_TIMEOUT : 0
 
   if (!online && completed && (state.bestTimeMs === 0 || state.elapsedMs < state.bestTimeMs)) {
-    // Mejor marca local, para que una carrera offline no sea del todo en vano.
+    // Local best time, so an offline race isn't entirely for nothing.
     state.bestTimeMs = Math.round(state.elapsedMs)
   }
 
@@ -154,8 +154,8 @@ function endRun(completed: boolean) {
 }
 
 /**
- * Si el veredicto no llega, la pantalla de resultados no puede quedarse en
- * "validando" para siempre.
+ * If the verdict never arrives, the results screen can't stay stuck on
+ * "validating" forever.
  */
 function tickResultWait(dt: number) {
   if (state.resultWaitFor <= 0) return
@@ -164,11 +164,11 @@ function tickResultWait(dt: number) {
   if (state.result && state.result.pending) {
     state.result.pending = false
     state.result.accepted = false
-    state.result.reason = 'el servidor no respondio a tiempo'
+    state.result.reason = 'the server did not respond in time'
   }
 }
 
-// --- Sistema ----------------------------------------------------------------
+// --- System ----------------------------------------------------------------
 
 function raceSystem(dt: number) {
   state.clock += dt
@@ -185,8 +185,8 @@ function raceSystem(dt: number) {
   }
 
   if (state.phase !== 'racing') {
-    // Fuera de carrera nadie esta acelerando: si el boton de la HUD se quedo
-    // apretado porque la UI desaparecio bajo el dedo, se suelta aca.
+    // Nobody's accelerating outside of a race: if the HUD button got stuck
+    // pressed because the UI disappeared under the finger, release it here.
     state.boosting = false
     uiBoost = false
     updateBike(dt)
@@ -200,9 +200,9 @@ function raceSystem(dt: number) {
 
   if (state.invulnerableFor > 0) state.invulnerableFor -= dt
 
-  // Velocidad: sube hacia la curva objetivo, que solo depende de la distancia.
-  // Con el boost apretado el objetivo es esa misma curva multiplicada; al
-  // soltarlo la moto baja frenando, no de un frame al otro.
+  // Speed: rises toward the target curve, which only depends on distance.
+  // With boost held the target is that same curve multiplied; releasing it
+  // brings the bike down by braking, not from one frame to the next.
   const target = state.boosting ? boostedSpeedAt(state.distanceM) : targetSpeedAt(state.distanceM)
   if (state.speed < target) {
     const rate = state.boosting ? RACE.boostRate : RACE.recoverRate
@@ -229,8 +229,8 @@ function raceSystem(dt: number) {
 
   if (state.distanceM >= RACE.distanceM) {
     state.distanceM = RACE.distanceM
-    // La meta cierra el ultimo checkpoint antes del reporte final: sin el, el
-    // servidor ve la carrera incompleta y la rechaza.
+    // The finish line closes the last checkpoint before the final report:
+    // without it, the server sees the race as incomplete and rejects it.
     reportCheckpoints()
     endRun(true)
   }
@@ -243,8 +243,8 @@ function tickCountdown(dt: number) {
   state.phase = 'racing'
   state.speed = RACE.baseSpeed
   playGo()
-  // El reloj del servidor arranca aca, no al abrir la cuenta regresiva: si no,
-  // los 3 segundos de countdown se veran como desfase de reloj en cada checkpoint.
+  // The server's clock starts here, not when the countdown opens: otherwise
+  // the 3 seconds of countdown would look like clock drift on every checkpoint.
   sendRaceStart()
 }
 
@@ -257,26 +257,26 @@ function readLaneInput() {
 }
 
 /**
- * Boost mantenido con la barra espaciadora.
+ * Boost held with the spacebar.
  *
- * `isPressed` y no `isTriggered`: interesa el estado de la tecla en este frame,
- * no el flanco de bajada. `uiBoost` es lo mismo desde el boton de la HUD, que
- * en mobile es la unica via.
+ * `isPressed`, not `isTriggered`: what matters is the key's state on this
+ * frame, not the falling edge. `uiBoost` is the same thing from the HUD
+ * button, which on mobile is the only way to trigger it.
  */
 function readBoostInput() {
   state.boosting = uiBoost || inputSystem.isPressed(InputAction.IA_JUMP)
 }
 
-/** Boost desde el boton de la HUD: vale mientras el boton siga apretado. */
+/** Boost from the HUD button: stays active while the button is held. */
 export function setBoost(active: boolean) {
   uiBoost = active
 }
 
 /**
- * Cuanto boost hay ahora, de 0 a 1.
+ * How much boost there is right now, from 0 to 1.
  *
- * Se deriva de la velocidad y no del estado de la tecla, asi que sube y baja
- * con la rampa: la camara y la HUD acompanan en vez de saltar.
+ * It's derived from speed rather than the key's state, so it rises and falls
+ * along the ramp: the camera and HUD follow along instead of snapping.
  */
 export function boostAmount(): number {
   const base = targetSpeedAt(state.distanceM)
@@ -285,7 +285,7 @@ export function boostAmount(): number {
   return Math.max(0, Math.min(1, over / (RACE.boostMultiplier - 1)))
 }
 
-/** Cambio de carril desde los botones de la UI (y desde mobile). */
+/** Lane change from the UI buttons (and from mobile). */
 export function changeLane(direction: number) {
   if (state.phase !== 'racing' && state.phase !== 'countdown') return
   state.lane = moveLane(direction)
@@ -299,14 +299,15 @@ function onCrash() {
     endRun(false)
     return
   }
-  showToast(`Choque - te quedan ${RACE.lives - state.crashes}`, 2)
+  showToast(`Crash - ${RACE.lives - state.crashes} lives left`, 2)
 }
 
 /**
- * Manda un checkpoint por cada tramo de 100 m cruzado.
+ * Sends a checkpoint for each 100 m segment crossed.
  *
- * El bucle cubre el caso de un frame largo que cruza mas de un tramo: el
- * servidor exige indices consecutivos y saltarse uno invalida la carrera.
+ * The loop covers the case of a long frame that crosses more than one
+ * segment: the server requires consecutive indices, and skipping one
+ * invalidates the race.
  */
 function reportCheckpoints() {
   const reached = Math.min(CHECKPOINT_COUNT, Math.floor(state.distanceM / RACE.checkpointIntervalM))
@@ -333,10 +334,10 @@ function tickToast(dt: number) {
 }
 
 /**
- * Devuelve al avatar al ancla si se alejo.
+ * Returns the avatar to the anchor if it drifted away.
  *
- * En los explorers donde `InputModifier` no surte efecto el jugador camina
- * libre y se sale de la pista; el cooldown evita teletransportarlo cada frame.
+ * In explorers where `InputModifier` has no effect, the player walks freely
+ * and leaves the track; the cooldown avoids teleporting them every frame.
  */
 function keepPlayerAnchored(dt: number) {
   if (anchorCooldown > 0) {

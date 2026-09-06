@@ -4,24 +4,24 @@ import { TRACK } from '../../shared/config'
 import { state } from '../state'
 
 /**
- * Musica de fondo.
+ * Background music.
  *
- * Suena en loop desde que carga la escena y baja de volumen fuera de carrera,
- * para que en el menu se escuchen los clics y en la pista no tape las monedas
- * ni los choques.
+ * Loops from the moment the scene loads and lowers in volume outside of a
+ * race, so clicks can be heard in the menu and coins and crashes aren't
+ * drowned out on the track.
  */
 
 const MUSIC = 'assets/sounds/music.mp3'
 
-/** Volumen en menu / resultados. */
+/** Volume in menu / results. */
 const IDLE_VOLUME = 0.22
-/** Volumen mientras se corre. */
-const RACE_VOLUME = 0.4
-/** Que tan rapido cruza de un volumen al otro. */
+/** Volume while racing. */
+const RACE_VOLUME = 1
+/** How fast it crosses from one volume to the other. */
 const FADE_RESPONSE = 1.5
 /**
- * Cambiar `volume` marca el componente como sucio y lo reenvia. Por debajo de
- * este delta no vale la pena escribirlo todos los frames.
+ * Changing `volume` marks the component as dirty and resends it. Below this
+ * delta it's not worth writing it every frame.
  */
 const VOLUME_EPSILON = 0.004
 
@@ -40,7 +40,7 @@ export function buildMusic() {
   })
 }
 
-/** Interpola hacia el volumen que corresponde a la fase actual. */
+/** Interpolates toward the volume for the current phase. */
 export function updateMusic(dt: number) {
   const target = musicTarget()
   if (Math.abs(target - volume) < VOLUME_EPSILON) return
@@ -55,8 +55,8 @@ function musicTarget(): number {
 }
 
 /**
- * Silencia sin parar la reproduccion: `playing = false` no garantiza retomar
- * donde iba, y un corte seco en mitad del tema se nota.
+ * Mutes without stopping playback: `playing = false` doesn't guarantee
+ * resuming where it left off, and a hard cut mid-track is noticeable.
  */
 export function toggleMusic() {
   state.musicOn = !state.musicOn

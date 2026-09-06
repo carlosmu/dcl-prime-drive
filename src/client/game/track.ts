@@ -3,12 +3,12 @@ import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { SPAWN, TRACK } from '../../shared/config'
 
 /**
- * Decorado de la pista: calzada estatica y elementos que hacen scroll.
+ * Track scenery: static road and scrolling elements.
  *
- * Nada aca crea ni destruye entidades despues del arranque. Los elementos
- * moviles son anillos de tamano fijo que al pasar la camara vuelven al fondo
- * sumandose el largo del anillo, asi que no hay pool ni recarga de GLB en
- * ningun momento de la carrera.
+ * Nothing here creates or destroys entities after startup. Moving elements
+ * are fixed-size rings that loop back to the rear once the camera passes
+ * them, adding the ring's length, so there's no pool or GLB reload at any
+ * point during the race.
  */
 
 const BUILDING_MODELS = [
@@ -19,20 +19,20 @@ const BUILDING_MODELS = [
 const PYLON_MODEL = 'assets/models/track_edge.glb'
 const STRIPE_MODEL = 'assets/models/street_lines.glb'
 
-/** Hasta donde se dibujan los elementos chicos. Mas lejos no se distinguen. */
+/** How far small elements are drawn. Further than this they're not distinguishable. */
 const DECOR_RANGE_Z = 200
 
 const STRIPE_SPACING = SPAWN.laneStripeEveryM
 const PYLON_SPACING = 16
-/** El poste tiene su origen centrado en Y: sin esto queda medio enterrado. */
+/** The pylon's origin is centered on Y: without this it's half buried. */
 const PYLON_BASE_Y = 1.04
 const BUILDING_SPACING = SPAWN.buildingEveryM
 
 type LoopRing = {
   entities: Entity[]
-  /** Largo total del anillo: al salir por atras, se suma esto en Z. */
+  /** Total ring length: this is added to Z when it exits the rear. */
   length: number
-  /** Se llama al reciclar una pieza, para variar el decorado. */
+  /** Called when a piece is recycled, to vary the scenery. */
   onWrap?: (entity: Entity, index: number) => void
 }
 
@@ -47,7 +47,7 @@ export function buildTrack() {
 }
 
 /**
- * Avanza el decorado. `delta` son los metros recorridos en este frame.
+ * Advances the scenery. `delta` is the meters traveled this frame.
  */
 export function scrollTrack(delta: number) {
   if (delta <= 0) return
@@ -63,7 +63,7 @@ export function scrollTrack(delta: number) {
   }
 }
 
-// --- Calzada ----------------------------------------------------------------
+// --- Road ----------------------------------------------------------------
 
 function buildRoadSurface() {
   const halfLength = TRACK.roadLength / 2
@@ -80,7 +80,7 @@ function buildRoadSurface() {
     metallic: 0
   })
 
-  // Banquinas: rellenan los 64 m de ancho de la escena para que no se vea el vacio.
+  // Shoulders: fill the scene's 64 m width so there's no visible gap.
   const shoulderWidth = (64 - TRACK.roadWidth) / 2
   for (const side of [-1, 1]) {
     const shoulder = engine.addEntity()
@@ -101,7 +101,7 @@ function buildRoadSurface() {
   }
 }
 
-/** Dos rieles emisivos a los costados: dan la linea de fuga de la pista. */
+/** Two emissive rails on the sides: they give the track its vanishing line. */
 function buildNeonRails() {
   for (const side of [-1, 1]) {
     const rail = engine.addEntity()
@@ -124,9 +124,9 @@ function buildNeonRails() {
   }
 }
 
-// --- Anillos moviles --------------------------------------------------------
+// --- Moving rings --------------------------------------------------------
 
-/** Lineas discontinuas que separan los carriles. */
+/** Dashed lines separating the lanes. */
 function buildStripes(): LoopRing {
   const entities: Entity[] = []
   const count = Math.floor(DECOR_RANGE_Z / STRIPE_SPACING)
@@ -147,7 +147,7 @@ function buildStripes(): LoopRing {
   return { entities, length: count * STRIPE_SPACING }
 }
 
-/** Postes luminosos al borde de la calzada. */
+/** Luminous pylons at the edge of the road. */
 function buildPylons(): LoopRing {
   const entities: Entity[] = []
   const count = Math.floor(DECOR_RANGE_Z / PYLON_SPACING)
@@ -172,11 +172,12 @@ function buildPylons(): LoopRing {
 }
 
 /**
- * Dos hileras de edificios.
+ * Two rows of buildings.
  *
- * El modelo de cada entidad se fija al crearla y no cambia nunca: cambiar
- * `GltfContainer.src` en caliente dispara una recarga y un tiron de frame. La
- * variedad sale de re-sortear escala, giro y X cada vez que la pieza se recicla.
+ * Each entity's model is set on creation and never changes: swapping
+ * `GltfContainer.src` on the fly triggers a reload and a frame stutter.
+ * Variety comes from re-rolling scale, rotation, and X every time a piece
+ * gets recycled.
  */
 function buildBuildings(): LoopRing {
   const entities: Entity[] = []

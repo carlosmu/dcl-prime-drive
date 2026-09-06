@@ -3,10 +3,10 @@ import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { LANE_COUNT, RACE, SPAWN, TRACK, laneToX } from '../../shared/config'
 
 /**
- * Monedas, obstaculos y arcos de checkpoint.
+ * Coins, obstacles, and checkpoint arches.
  *
- * Todo sale de pools creados al arrancar: durante la carrera solo se mueven
- * Transforms. Lo inactivo se aparca en Y = -200, fuera de camara.
+ * Everything comes from pools created at startup: during the race only
+ * Transforms move. Inactive pieces are parked at Y = -200, out of camera view.
  */
 
 const COIN_MODEL = 'assets/models/coin.glb'
@@ -19,7 +19,7 @@ const COIN_SFX = 'assets/sounds/coin.mp3'
 const CRASH_SFX = 'assets/sounds/losetrumpet.mp3'
 const WIN_SFX = 'assets/sounds/won.mp3'
 
-/** Metros de pista visibles por delante del jugador. */
+/** Meters of track visible ahead of the player. */
 const LOOKAHEAD_M = TRACK.spawnZ - TRACK.playerZ
 
 const PARKED_Y = -200
@@ -29,39 +29,39 @@ const OBSTACLE_POOL_SIZE = 20
 const ARCH_POOL_SIZE = 4
 
 const ARCH_SCALE_Y = 1.1
-/** El arco tiene su origen 0.92 m por encima de la base de la malla. */
+/** The arch's origin is 0.92 m above the mesh's base. */
 const ARCH_BASE_Y = 0.92 * ARCH_SCALE_Y
 
 /**
- * Ancho de la valla, en metros.
+ * Barrier width, in meters.
  *
- * La valla es una primitiva y no un GLB a proposito: el modelo del catalogo
- * traia una transformacion propia en sus nodos (+14 m en Y, -17 m en Z) que
- * dejaba la malla lejos de la posicion de la entidad. La colision se calcula
- * contra la entidad, asi que el jugador chocaba contra nada. Con una caja, lo
- * que se ve y lo que colisiona miden lo mismo por construccion.
+ * The barrier is a primitive rather than a GLB on purpose: the catalog model
+ * carried its own transform on its nodes (+14 m in Y, -17 m in Z) that left
+ * the mesh far from the entity's position. Collision is calculated against
+ * the entity, so the player would crash into nothing. With a box, what's
+ * seen and what collides are the same size by construction.
  */
 const BARRIER_WIDTH = 2.9
 const BARRIER_HEIGHT = 1.1
 const BARRIER_DEPTH = 0.4
 
-/** Medio ancho de la moto para el test de colision. */
+/** Half-width of the bike, for the collision test. */
 const BIKE_HALF_WIDTH = 0.55
-/** Margen extra para agarrar monedas: recompensa el intento, no castiga el pixel. */
+/** Extra margin to grab coins: rewards the attempt, doesn't punish the pixel. */
 const COIN_GRAB_HALF_WIDTH = 1.5
 
 type PoolItem = {
   entity: Entity
   active: boolean
-  /** Ya cruzo al jugador y fue agarrada/chocada: sigue viajando pero no puntua. */
+  /** Already crossed the player and was grabbed/hit: keeps traveling but no longer scores. */
   consumed: boolean
-  /** Medio ancho efectivo del obstaculo. */
+  /** Effective half-width of the obstacle. */
   halfWidth: number
   /**
-   * Y a la que se activa la pieza.
+   * Y at which the piece is activated.
    *
-   * Cada modelo tiene su origen en un lugar distinto respecto de su base, asi
-   * que sin esto unos flotan y otros quedan enterrados.
+   * Each model's origin sits in a different spot relative to its base, so
+   * without this some would float and others would end up buried.
    */
   spawnY: number
 }
@@ -75,7 +75,7 @@ let coinSfxIndex = 0
 let crashSfx: Entity = engine.RootEntity
 let winSfx: Entity = engine.RootEntity
 
-/** Metros hasta la proxima oleada de monedas / proximo obstaculo / proximo arco. */
+/** Meters until the next coin wave / next obstacle / next arch. */
 let nextCoinWaveAtM = 0
 let nextObstacleAtM = 0
 let nextArchAtM = 0
@@ -135,8 +135,8 @@ export function buildSpawner() {
 }
 
 /**
- * Valla: caja oscura con una franja emisiva arriba, en el mismo lenguaje visual
- * que los rieles de la pista. Mide exactamente lo que mide su colision.
+ * Barrier: dark box with an emissive stripe on top, matching the same visual
+ * language as the track rails. Measures exactly what its collision measures.
  */
 function buildBarrier(): PoolItem {
   const entity = engine.addEntity()
@@ -171,7 +171,7 @@ function buildBarrier(): PoolItem {
     active: false,
     consumed: false,
     halfWidth: BARRIER_WIDTH / 2,
-    // La caja de DCL se centra en su origen: media altura la deja apoyada.
+    // DCL's box is centered on its origin: half its height rests it on the ground.
     spawnY: BARRIER_HEIGHT / 2
   }
 }
@@ -186,7 +186,7 @@ function buildCone(): PoolItem {
   return { entity, active: false, consumed: false, halfWidth: 0.7, spawnY: 0 }
 }
 
-/** Jingle de meta. */
+/** Finish-line jingle. */
 export function playWinSfx() {
   AudioSource.createOrReplace(winSfx, {
     audioClipUrl: WIN_SFX,
@@ -198,7 +198,7 @@ export function playWinSfx() {
   })
 }
 
-/** Devuelve todo al pool y reinicia los contadores de spawn. */
+/** Returns everything to the pool and resets the spawn counters. */
 export function resetSpawner() {
   for (const pool of [coins, obstacles, arches]) {
     for (const item of pool) park(item)
@@ -209,20 +209,20 @@ export function resetSpawner() {
 }
 
 /**
- * Puebla la pista antes de largar, para que la cuenta regresiva no transcurra
- * mirando asfalto vacio.
+ * Populates the track before the start, so the countdown doesn't run over
+ * empty asphalt.
  */
 export function prefillSpawner() {
   spawnDue(0)
 }
 
 /**
- * Un frame de simulacion.
+ * One simulation frame.
  *
- * @param delta metros recorridos en este frame
- * @param distanceM distancia total recorrida
- * @param bikeX X actual de la moto
- * @param canBeHit false durante la invulnerabilidad post-choque
+ * @param delta meters traveled this frame
+ * @param distanceM total distance traveled
+ * @param bikeX bike's current X
+ * @param canBeHit false during post-crash invulnerability
  */
 export function updateSpawner(
   delta: number,
@@ -260,13 +260,13 @@ export function updateSpawner(
 }
 
 /**
- * Mueve un pool y avisa cuando una pieza cruza el plano del jugador.
+ * Moves a pool and notifies when a piece crosses the player's plane.
  *
- * El test es de cruce, no de proximidad: a 60 m/s y 30 fps una pieza avanza 2 m
- * por frame y una ventana de distancia se la saltaria por completo.
+ * The test is crossing-based, not proximity-based: at 60 m/s and 30 fps a
+ * piece advances 2 m per frame and a distance window would skip right over it.
  *
- * Lo consumido no se aparca en el acto: sigue viajando hasta salir de camara,
- * para que se vea la animacion de la moneda al agarrarla.
+ * Consumed pieces aren't parked immediately: they keep traveling until out of
+ * camera view, so the coin's catch animation can be seen.
  */
 function moveAndTest(
   pool: PoolItem[],
@@ -300,12 +300,13 @@ function park(item: PoolItem) {
 // --- Spawns -----------------------------------------------------------------
 
 /**
- * Programa lo que entra en escena.
+ * Schedules what enters the scene.
  *
- * Cada spawn tiene una distancia de pista agendada: el metro exacto en el que
- * la pieza pasa por delante del jugador. Se la coloca a
- * `playerZ + (agendada - recorrida)`, que en regimen da justo `spawnZ` y al
- * arrancar deja la pista ya poblada en vez de 10 segundos de asfalto vacio.
+ * Each spawn has a scheduled track distance: the exact meter at which the
+ * piece passes in front of the player. It's placed at
+ * `playerZ + (scheduled - traveled)`, which at steady state lands exactly at
+ * `spawnZ`, and at startup leaves the track already populated instead of 10
+ * seconds of empty asphalt.
  */
 function spawnDue(distanceM: number) {
   const horizonM = distanceM + LOOKAHEAD_M
@@ -330,7 +331,7 @@ function zForSchedule(scheduledAtM: number, distanceM: number): number {
   return TRACK.playerZ + (scheduledAtM - distanceM)
 }
 
-/** La pista se endurece: los obstaculos se acercan a medida que avanza. */
+/** The track gets harder: obstacles get closer together as it progresses. */
 function obstacleIntervalAt(distanceM: number): number {
   const progress = Math.max(0, Math.min(1, distanceM / RACE.distanceM))
   return SPAWN.obstacleEveryStartM + (SPAWN.obstacleEveryEndM - SPAWN.obstacleEveryStartM) * progress
@@ -349,7 +350,7 @@ function spawnCoinWave(z: number) {
 }
 
 /**
- * Bloquea uno o dos carriles, nunca los tres: siempre queda una salida.
+ * Blocks one or two lanes, never all three: there's always a way through.
  */
 function spawnObstacleGroup(z: number) {
   const blocked = Math.random() < 0.35 ? 2 : 1

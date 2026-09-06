@@ -9,20 +9,20 @@ import { setGhostLabel } from './game/ghost'
 import { setSkin } from './game/bike'
 
 /**
- * Capa de red del cliente.
+ * Client network layer.
  *
- * El cliente simula la carrera, pero no decide nada: monedas, records y
- * compras entran solo por lo que devuelve el servidor. Todo lo que sale de aca
- * es un reporte, no una orden.
+ * The client simulates the race, but decides nothing: coins, records, and
+ * purchases only come in through what the server returns. Everything that
+ * goes out from here is a report, not an order.
  *
- * El servidor es **opcional para jugar**. Si no aparece, la escena pasa a
- * `offline` y la carrera se corre igual, sin acreditar nada. Cualquier otra
- * cosa dejaria el juego colgado en "conectando" en un preview sin servidor
- * autoritativo, que es exactamente lo que pasa cuando el binario headless no
- * arranca.
+ * The server is **optional to play**. If it doesn't show up, the scene
+ * switches to `offline` and the race still runs, without crediting anything.
+ * Doing anything else would leave the game stuck on "connecting" in a preview
+ * without an authoritative server, which is exactly what happens when the
+ * headless binary fails to start.
  */
 
-/** Segundos esperando el primer sync antes de declarar la escena offline. */
+/** Seconds waiting for the first sync before declaring the scene offline. */
 const HANDSHAKE_TIMEOUT = 6
 
 let waited = 0
@@ -36,11 +36,11 @@ export function initNet() {
 }
 
 /**
- * Espera el sync inicial y manda el `hello`.
+ * Waits for the initial sync and sends `hello`.
  *
- * No se auto-remueve al declarar offline: si el servidor aparece mas tarde
- * —arranca tarde, o se reconecta— el handshake se completa solo y la escena
- * pasa a online sin recargar.
+ * It doesn't auto-remove itself when declaring offline: if the server shows
+ * up later — starts late, or reconnects — the handshake completes on its own
+ * and the scene switches to online without reloading.
  */
 function handshakeSystem(dt: number) {
   if (helloSent) return
@@ -50,7 +50,7 @@ function handshakeSystem(dt: number) {
       waited += dt
       if (waited >= HANDSHAKE_TIMEOUT) {
         state.netStatus = 'offline'
-        console.log('[Client] sin servidor autoritativo: se juega en local, sin acreditar monedas')
+        console.log('[Client] no authoritative server: playing locally, coins will not be credited')
       }
     }
     return
@@ -66,10 +66,11 @@ function handshakeSystem(dt: number) {
 }
 
 /**
- * Lee el latido del servidor.
+ * Reads the server's heartbeat.
  *
- * Es la unica senal que separa "no hay servidor" de "hay servidor pero el CRDT
- * no llega": si el tick avanza, las dos mitades estan vivas y conectadas.
+ * It's the only signal that separates "no server" from "there's a server but
+ * the CRDT isn't arriving": if the tick advances, both halves are alive and
+ * connected.
  */
 function heartbeatSystem() {
   state.stateSynced = isStateSyncronized()
@@ -82,7 +83,7 @@ function heartbeatSystem() {
   }
 }
 
-/** El record vive en un componente sincronizado, no en un mensaje. */
+/** The record lives in a synced component, not a message. */
 function trackRecordSystem() {
   for (const [, record] of engine.getEntitiesWith(TrackRecord)) {
     if (record.trackId !== TRACK_ID) continue
@@ -91,7 +92,7 @@ function trackRecordSystem() {
   }
 }
 
-/** Sello de recepcion: alimenta el "ultimo mensaje" del panel de debug. */
+/** Reception stamp: feeds the debug panel's "last message". */
 function markMessage() {
   state.messagesReceived += 1
   state.lastMessageAtClock = state.clock
@@ -131,8 +132,8 @@ function registerHandlers() {
     markMessage()
     state.invalidated = true
     state.invalidReason = data.reason
-    showToast(`Carrera invalidada: ${data.reason}`, 6)
-    console.log(`[Client] checkpoint ${data.index} rechazado: ${data.reason}`)
+    showToast(`Race invalidated: ${data.reason}`, 6)
+    console.log(`[Client] checkpoint ${data.index} rejected: ${data.reason}`)
   })
 
   room.onMessage('raceResult', (data) => {
@@ -147,9 +148,9 @@ function registerHandlers() {
     }
     state.coins = data.totalCoins
     if (data.accepted && data.newRecord) {
-      showToast(`Nuevo record: ${formatTime(data.elapsedMs)}`, 6)
+      showToast(`New record: ${formatTime(data.elapsedMs)}`, 6)
     } else if (!data.accepted) {
-      showToast(`El servidor rechazo la carrera: ${data.reason}`, 6)
+      showToast(`The server rejected the race: ${data.reason}`, 6)
     }
   })
 
@@ -166,10 +167,10 @@ function registerHandlers() {
   })
 }
 
-// --- Envios -----------------------------------------------------------------
-// Sin servidor no se encola nada: `room.send` guarda los mensajes hasta que el
-// room este listo, y una carrera entera son 100 checkpoints que no van a
-// entregarse nunca.
+// --- Sends -----------------------------------------------------------------
+// Nothing is queued without a server: `room.send` holds messages until the
+// room is ready, and a whole race is 100 checkpoints that would never be
+// delivered.
 
 export function sendRaceStart() {
   if (!isOnline()) return
@@ -203,11 +204,11 @@ export function sendRaceAbort(reason: string) {
 }
 
 export function requestBuySkin(skinId: string) {
-  if (!isOnline()) return showToast('El garage necesita el servidor', 3)
+  if (!isOnline()) return showToast('The garage needs the server', 3)
   room.send('buySkin', { skinId })
 }
 
 export function requestEquipSkin(skinId: string) {
-  if (!isOnline()) return showToast('El garage necesita el servidor', 3)
+  if (!isOnline()) return showToast('The garage needs the server', 3)
   room.send('equipSkin', { skinId })
 }

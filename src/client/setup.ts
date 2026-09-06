@@ -9,10 +9,10 @@ import { initRace } from './race'
 import { setupUi } from './ui'
 
 /**
- * Arranque del cliente.
+ * Client startup.
  *
- * El orden importa: todo lo que instancia entidades corre antes que los
- * sistemas, para que la primera pasada del bucle ya encuentre la escena armada.
+ * Order matters: everything that instantiates entities runs before the
+ * systems, so the loop's first pass already finds the scene fully set up.
  */
 export function initClient() {
   buildTrack()

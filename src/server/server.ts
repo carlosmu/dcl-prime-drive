@@ -23,9 +23,9 @@ import {
   validateFinish
 } from './validation'
 
-/** Carreras en curso, por wallet. */
+/** Races in progress, by wallet. */
 const runs = new Map<string, RunState>()
-/** Nombre visible reportado en el `hello`, por wallet. */
+/** Visible name reported in the `hello`, by wallet. */
 const names = new Map<string, string>()
 
 let recordEntity = engine.RootEntity
@@ -34,14 +34,14 @@ let uptimeSeconds = 0
 let standingsTimer = 0
 let presenceTimer = 0
 
-/** Multiplicador de monedas configurable por entorno (eventos, dobles, etc.). */
+/** Coin multiplier configurable per environment (events, doubles, etc.). */
 let coinMultiplier = 1
 
 const STANDINGS_INTERVAL = 1
 const PRESENCE_INTERVAL = 5
 
 export async function initServer() {
-  console.log(`[Server] Prime Drive - pista ${TRACK_ID} - ${CHECKPOINT_COUNT} checkpoints`)
+  console.log(`[Server] Prime Drive - track ${TRACK_ID} - ${CHECKPOINT_COUNT} checkpoints`)
 
   const rawMultiplier = await EnvVar.get('COIN_MULTIPLIER')
   const parsed = parseFloat(rawMultiplier || '1')
@@ -91,13 +91,13 @@ function registerHandlers() {
     if (!context) return
     const address = context.from
     if (data.trackId !== TRACK_ID) {
-      console.log(`[Server] ${address} arranco una pista desconocida: ${data.trackId}`)
+      console.log(`[Server] ${address} started an unknown track: ${data.trackId}`)
       return
     }
     const profile = peekProfile(address)
     const skinId = profile && profile.ownedSkins.includes(data.skinId) ? data.skinId : findSkin(data.skinId).id
     runs.set(address, createRun(address, names.get(address) ?? shortAddress(address), skinId, Date.now()))
-    console.log(`[Server] ${address} arranco carrera con ${skinId}`)
+    console.log(`[Server] ${address} started race with ${skinId}`)
   })
 
   room.onMessage('checkpoint', (data, context) => {
@@ -109,7 +109,7 @@ function registerHandlers() {
     if (!result.ok) {
       run.invalidated = true
       run.invalidReason = result.reason
-      console.log(`[Server] checkpoint rechazado de ${context.from}: ${result.reason}`)
+      console.log(`[Server] checkpoint rejected from ${context.from}: ${result.reason}`)
       room.send('checkpointRejected', { index: data.index, reason: result.reason }, { to: [context.from] })
       return
     }
@@ -124,7 +124,7 @@ function registerHandlers() {
   room.onMessage('raceAbort', (data, context) => {
     if (!context) return
     runs.delete(context.from)
-    console.log(`[Server] ${context.from} abandono: ${data.reason}`)
+    console.log(`[Server] ${context.from} quit: ${data.reason}`)
   })
 
   room.onMessage('buySkin', (data, context) => {
@@ -138,7 +138,7 @@ function registerHandlers() {
   })
 }
 
-// --- Carrera ----------------------------------------------------------------
+// --- Race ----------------------------------------------------------------
 
 type FinishPayload = {
   completed: boolean
@@ -157,7 +157,7 @@ async function finishRace(address: string, report: FinishPayload) {
   const profile = await loadProfile(address)
 
   if (!result.ok) {
-    console.log(`[Server] carrera rechazada de ${address}: ${result.reason}`)
+    console.log(`[Server] race rejected from ${address}: ${result.reason}`)
     room.send(
       'raceResult',
       {
@@ -211,7 +211,7 @@ async function finishRace(address: string, report: FinishPayload) {
   await saveProfile(address, profile)
 
   console.log(
-    `[Server] ${address} ${report.completed ? 'termino' : 'abandono'} en ${report.elapsedMs} ms - +${awarded} monedas`
+    `[Server] ${address} ${report.completed ? 'finished' : 'quit'} in ${report.elapsedMs} ms - +${awarded} coins`
   )
 
   room.send(
@@ -229,28 +229,28 @@ async function finishRace(address: string, report: FinishPayload) {
   await sendProfile(address)
 }
 
-// --- Tienda -----------------------------------------------------------------
+// --- Shop -----------------------------------------------------------------
 
 async function buySkin(address: string, skinId: string) {
   const profile = await loadProfile(address)
   const skin = SKINS.find((s) => s.id === skinId)
 
-  if (!skin) return sendShopResult(address, false, 'skin desconocida', skinId)
-  if (profile.ownedSkins.includes(skin.id)) return sendShopResult(address, false, 'ya la tenes', skinId)
-  if (profile.coins < skin.price) return sendShopResult(address, false, 'monedas insuficientes', skinId)
+  if (!skin) return sendShopResult(address, false, 'unknown skin', skinId)
+  if (profile.ownedSkins.includes(skin.id)) return sendShopResult(address, false, 'you already own it', skinId)
+  if (profile.coins < skin.price) return sendShopResult(address, false, 'insufficient coins', skinId)
 
   profile.coins -= skin.price
   profile.ownedSkins.push(skin.id)
   profile.equippedSkin = skin.id
   await saveProfile(address, profile)
-  console.log(`[Server] ${address} compro ${skin.id} por ${skin.price}`)
+  console.log(`[Server] ${address} bought ${skin.id} for ${skin.price}`)
   sendShopResult(address, true, '', skinId)
   await sendProfile(address)
 }
 
 async function equipSkin(address: string, skinId: string) {
   const profile = await loadProfile(address)
-  if (!profile.ownedSkins.includes(skinId)) return sendShopResult(address, false, 'no la tenes', skinId)
+  if (!profile.ownedSkins.includes(skinId)) return sendShopResult(address, false, "you don't own it", skinId)
   profile.equippedSkin = skinId
   await saveProfile(address, profile)
   sendShopResult(address, true, '', skinId)
@@ -273,7 +273,7 @@ function sendShopResult(address: string, ok: boolean, reason: string, skinId: st
   )
 }
 
-// --- Envios -----------------------------------------------------------------
+// --- Sends -----------------------------------------------------------------
 
 async function sendProfile(address: string) {
   const profile = await loadProfile(address)
@@ -333,7 +333,7 @@ function serverTick(dt: number) {
   }
 }
 
-/** Un latido por segundo. Es lo que el panel de debug del cliente muestra. */
+/** One heartbeat per second. This is what the client's debug panel shows. */
 function beat() {
   const heartbeat = ServerHeartbeat.getMutableOrNull(heartbeatEntity)
   if (!heartbeat) return
@@ -373,7 +373,7 @@ function broadcastStandings() {
   room.send('standings', { entries: entries.slice(0, 8) })
 }
 
-/** Un jugador que se fue sin mandar `raceAbort` deja una carrera colgada. */
+/** A player who left without sending `raceAbort` leaves a hanging race. */
 function dropDisconnectedRacers() {
   if (runs.size === 0) return
   const connected = new Set<string>()
@@ -383,7 +383,7 @@ function dropDisconnectedRacers() {
   for (const address of Array.from(runs.keys())) {
     if (!connected.has(address)) {
       runs.delete(address)
-      console.log(`[Server] ${address} se desconecto a mitad de carrera`)
+      console.log(`[Server] ${address} disconnected mid-race`)
     }
   }
 }

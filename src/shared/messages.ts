@@ -2,33 +2,33 @@ import { Schemas } from '@dcl/sdk/ecs'
 import { registerMessages } from '@dcl/sdk/network'
 
 /**
- * Protocolo cliente ↔ servidor autoritativo.
+ * Client ↔ authoritative server protocol.
  *
- * El cliente simula la carrera (es single player), pero el servidor es el único
- * que otorga monedas, valida tiempos y guarda récords. Nada de lo que reporta
- * el cliente se acepta sin pasar por `server/validation.ts`.
+ * The client simulates the race (it's single player), but the server is the
+ * only one that grants coins, validates times, and saves records. Nothing
+ * the client reports is accepted without going through `server/validation.ts`.
  */
 export const Messages = {
-  // ── Cliente → Servidor ────────────────────────────────────────────────────
-  /** Handshake al entrar a la escena. Devuelve perfil, ghost y leaderboard. */
+  // ── Client → Server ────────────────────────────────────────────────────
+  /** Handshake on entering the scene. Returns profile, ghost, and leaderboard. */
   hello: Schemas.Map({
     displayName: Schemas.String
   }),
-  /** Arranca una carrera. El servidor sella el tiempo de inicio de su lado. */
+  /** Starts a race. The server timestamps the start time on its side. */
   raceStart: Schemas.Map({
     trackId: Schemas.String,
     skinId: Schemas.String
   }),
-  /** Se envía cada 100 m recorridos. */
+  /** Sent every 100 m traveled. */
   checkpoint: Schemas.Map({
-    /** 1-based: el checkpoint 1 son los primeros 100 m. */
+    /** 1-based: checkpoint 1 is the first 100 m. */
     index: Schemas.Int,
-    /** ms transcurridos desde el arranque, según el cliente. */
+    /** ms elapsed since the start, according to the client. */
     elapsedMs: Schemas.Int,
     coins: Schemas.Int,
     crashes: Schemas.Int
   }),
-  /** Fin de carrera: meta alcanzada o carrera abandonada por choques. */
+  /** End of race: finish line reached or race abandoned due to crashes. */
   raceFinish: Schemas.Map({
     completed: Schemas.Boolean,
     elapsedMs: Schemas.Int,
@@ -36,32 +36,32 @@ export const Messages = {
     coins: Schemas.Int,
     crashes: Schemas.Int
   }),
-  /** El jugador salió de la escena o reinició sin terminar. */
+  /** The player left the scene or restarted without finishing. */
   raceAbort: Schemas.Map({
     reason: Schemas.String
   }),
   buySkin: Schemas.Map({ skinId: Schemas.String }),
   equipSkin: Schemas.Map({ skinId: Schemas.String }),
 
-  // ── Servidor → Cliente ────────────────────────────────────────────────────
-  /** Estado persistido de la wallet. Única fuente de verdad del saldo. */
+  // ── Server → Client ────────────────────────────────────────────────────
+  /** Persisted wallet state. Single source of truth for the balance. */
   profileSync: Schemas.Map({
     coins: Schemas.Int,
-    /** Ids de skin separados por coma. */
+    /** Comma-separated skin ids. */
     ownedSkins: Schemas.String,
     equippedSkin: Schemas.String,
     bestTimeMs: Schemas.Int,
     racesFinished: Schemas.Int
   }),
-  /** Récord de la pista, para reproducirlo como ghost. */
+  /** Track record, to replay it as a ghost. */
   ghostSync: Schemas.Map({
     available: Schemas.Boolean,
     ownerName: Schemas.String,
     totalMs: Schemas.Int,
-    /** ms acumulados en cada checkpoint. `splits[i]` = llegada al metro (i+1)*100. */
+    /** ms accumulated at each checkpoint. `splits[i]` = arrival at meter (i+1)*100. */
     splits: Schemas.Array(Schemas.Int)
   }),
-  /** Progreso en vivo del resto de corredores en la escena. */
+  /** Live progress of the rest of the racers in the scene. */
   standings: Schemas.Map({
     entries: Schemas.Array(
       Schemas.Map({
@@ -73,12 +73,12 @@ export const Messages = {
       })
     )
   }),
-  /** El servidor rechazó un checkpoint: la carrera queda invalidada. */
+  /** The server rejected a checkpoint: the race is now invalidated. */
   checkpointRejected: Schemas.Map({
     index: Schemas.Int,
     reason: Schemas.String
   }),
-  /** Resultado final validado por el servidor. */
+  /** Final result validated by the server. */
   raceResult: Schemas.Map({
     accepted: Schemas.Boolean,
     reason: Schemas.String,

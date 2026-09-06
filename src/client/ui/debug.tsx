@@ -5,14 +5,14 @@ import { state } from '../state'
 import { COLORS } from './theme'
 
 /**
- * Panel de diagnostico del servidor autoritativo.
+ * Authoritative server diagnostics panel.
  *
- * El dato que importa es `server tick`: lo emite el servidor una vez por
- * segundo y viaja como componente sincronizado. Si avanza, el servidor esta
- * vivo y el canal CRDT llega. Si esta en `--`, no hay servidor. Si esta
- * congelado en un numero, el servidor arranco y despues se corto.
+ * The value that matters is `server tick`: the server emits it once per
+ * second and it travels as a synced component. If it advances, the server is
+ * alive and the CRDT channel is arriving. If it's at `--`, there's no server.
+ * If it's frozen on a number, the server started and then went down.
  *
- * Se apaga desde el menu.
+ * Can be turned off from the menu.
  */
 
 const ROW_HEIGHT = 22
@@ -33,25 +33,25 @@ export const DebugPanel = () => (
   >
     <Row label="server tick" value={tickValue()} color={tickColor()} />
     <Row label="server uptime" value={state.serverTick >= 0 ? `${state.serverUptimeSeconds}s` : '--'} />
-    <Row label="ultimo mensaje" value={lastMessageValue()} />
+    <Row label="last message" value={lastMessageValue()} />
     <Row
       label="net"
       value={`${state.netStatus} - stateSynced=${state.stateSynced} - msgs=${state.messagesReceived}`}
       color={state.netStatus === 'online' ? COLORS.accent : COLORS.gold}
     />
-    <Row label="wallet" value={state.myAddress || '(sin identidad)'} />
+    <Row label="wallet" value={state.myAddress || '(no identity)'} />
     <Row
-      label="jugadores"
-      value={`servidor=${state.serverTick >= 0 ? state.serverConnectedPlayers : '--'} - rivales=${state.standings.length}`}
+      label="players"
+      value={`server=${state.serverTick >= 0 ? state.serverConnectedPlayers : '--'} - rivals=${state.standings.length}`}
     />
     <Row
-      label="carrera"
+      label="race"
       value={`${state.phase} - ${Math.floor(state.distanceM)}m - cp ${state.lastCheckpointSent}/${CHECKPOINT_COUNT}${
-        state.invalidated ? ' - INVALIDADA' : ''
+        state.invalidated ? ' - INVALID' : ''
       }`}
       color={state.invalidated ? COLORS.danger : COLORS.text}
     />
-    <Row label="pista" value={`${TRACK_ID} - clock ${state.clock.toFixed(1)}s`} />
+    <Row label="track" value={`${TRACK_ID} - clock ${state.clock.toFixed(1)}s`} />
   </UiEntity>
 )
 
@@ -81,14 +81,14 @@ const Row = (props: { label: string; value: string; color?: Color4 }) => (
 )
 
 function tickValue(): string {
-  if (state.serverTick < 0) return '-- (nunca llego un latido del servidor)'
+  if (state.serverTick < 0) return '-- (server heartbeat never arrived)'
   const age = state.clock - state.serverTickAtClock
-  return `${state.serverTick}  (hace ${age.toFixed(1)}s)`
+  return `${state.serverTick}  (${age.toFixed(1)}s ago)`
 }
 
 /**
- * Un latido llega cada segundo. Pasados 3 s sin novedades, el servidor se
- * cayo o el canal se corto.
+ * A heartbeat arrives every second. After 3 s without one, the server has
+ * either gone down or the channel has been cut.
  */
 function tickColor(): Color4 {
   if (state.serverTick < 0) return COLORS.danger
@@ -96,6 +96,6 @@ function tickColor(): Color4 {
 }
 
 function lastMessageValue(): string {
-  if (state.lastMessageAtClock < 0) return '-- (ningun mensaje recibido)'
-  return `hace ${(state.clock - state.lastMessageAtClock).toFixed(1)}s`
+  if (state.lastMessageAtClock < 0) return '-- (no message received)'
+  return `${(state.clock - state.lastMessageAtClock).toFixed(1)}s ago`
 }
