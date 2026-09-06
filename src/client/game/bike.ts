@@ -5,11 +5,12 @@ import { LANE_COUNT, SKINS, TRACK, findSkin, laneToX } from '../../shared/config
 /**
  * The player's bike.
  *
- * The avatar rides it frozen on top, so the bike itself never moves: it stays
- * planted at the center of the road and only leans. `currentX` is the lane it
- * logically occupies — obstacles are tested against it — and the world is
- * shifted sideways to match, the same way progress along Z is the world
- * coming toward the player.
+ * The avatar rides it frozen on top and can't be moved from scene code, so
+ * the bike doesn't travel either: it stays planted at the center of the road
+ * and the world slides around it (see `setWorldOffset` in track.ts).
+ * `currentX` is the lane it logically occupies — obstacles are tested against
+ * it. It does roll, though: a rotation is the one thing the rider can match,
+ * through an animation on its own rig.
  *
  * The four skins are instantiated at startup and toggled with
  * `VisibilityComponent`: swapping `GltfContainer.src` on the fly would
@@ -27,7 +28,7 @@ export const BIKE_YAW_DEG = 0
 /** Lane change speed, in m/s. */
 const LANE_SPEED = 14
 /** Maximum lean angle when changing lanes, in degrees. */
-const MAX_LEAN_DEG = 22
+const MAX_LEAN_DEG = 30
 /** How fast the lean follows the lateral movement. */
 const LEAN_RESPONSE = 8
 
@@ -108,9 +109,9 @@ export function getBikeY(): number {
   return Transform.get(root).position.y
 }
 
-/** Parent for anything that has to ride along with the bike, like the rider. */
-export function getBikeRoot(): Entity {
-  return root
+/** Current roll in degrees, positive when sliding toward +X. Drives the rider's pose. */
+export function getBikeLean(): number {
+  return lean
 }
 
 export function resetBike() {
@@ -142,9 +143,9 @@ export function updateBike(dt: number) {
 }
 
 function applyTransform() {
-  // The bike never leaves the center of the road: `currentX` is the lane it
-  // logically occupies, and the world is what slides sideways (see
-  // `setWorldOffset` in track.ts). Only the lean is drawn here.
-  const transform = Transform.getMutable(root)
-  transform.rotation = Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, -lean)
+  // Only the roll: the bike never leaves the center of the road, since
+  // `currentX` is the lane it logically occupies and the world is what slides
+  // sideways (see `setWorldOffset` in track.ts). The rider matches this angle
+  // through its own animation — see `RIDE_POSES` in race.ts.
+  Transform.getMutable(root).rotation = Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, -lean)
 }

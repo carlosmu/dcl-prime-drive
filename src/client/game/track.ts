@@ -26,6 +26,8 @@ const STRIPE_SPACING = SPAWN.laneStripeEveryM
 const PYLON_SPACING = 16
 /** The pylon's origin is centered on Y: without this it's half buried. */
 const PYLON_BASE_Y = 1.04
+/** How far outside the road's edge the pylons stand. */
+const PYLON_SIDE_OFFSET = 0.9
 const BUILDING_SPACING = SPAWN.buildingEveryM
 
 type LoopRing = {
@@ -41,11 +43,12 @@ const rings: LoopRing[] = []
 /**
  * Root of everything that slides sideways.
  *
- * The avatar can't be repositioned without the client interrupting its ride
- * emote and playing a walk/run cycle, so the bike — and the player sitting on
- * it — stay planted at the center of the road: a lane change moves the world
+ * The avatar's transform is engine-controlled — it can't be moved without the
+ * client interrupting its ride emote — so the bike, and the player sitting on
+ * it, stay planted at the center of the road: a lane change slides the world
  * instead, the same way progress along Z is the world coming toward the
- * player. Everything that has to line up with the bike's lane hangs here.
+ * player. The lean is not done here; it's animated on the avatar's own rig
+ * and mirrored by the bike's rotation.
  */
 let worldRoot: Entity = engine.RootEntity
 
@@ -94,8 +97,8 @@ export function scrollTrack(delta: number) {
  * Ground filling the scene's full 64 m width, under the road.
  *
  * It's the one piece that does NOT hang from `worldRoot`: it already spans
- * the scene edge to edge, and shifting it sideways would push it out of
- * bounds. It runs under the road instead of flanking it, so no lane offset
+ * the scene edge to edge, and sliding it sideways would push it out of
+ * bounds. It runs under the road rather than flanking it, so no lane offset
  * can open a gap between them.
  */
 function buildGround() {
@@ -187,7 +190,7 @@ function buildPylons(): LoopRing {
       Transform.create(pylon, {
         parent: worldRoot,
         position: Vector3.create(
-          TRACK.centerX + side * (TRACK.roadWidth / 2 + 0.9),
+          TRACK.centerX + side * (TRACK.roadWidth / 2 + PYLON_SIDE_OFFSET),
           TRACK.roadY + PYLON_BASE_Y,
           TRACK.despawnZ + i * PYLON_SPACING
         ),

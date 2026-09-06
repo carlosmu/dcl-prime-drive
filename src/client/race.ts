@@ -1,6 +1,7 @@
 import {
   AvatarModifierArea,
   AvatarModifierType,
+  Entity,
   InputAction,
   InputModifier,
   PointerEventType,
@@ -10,14 +11,14 @@ import {
   inputSystem
 } from '@dcl/sdk/ecs'
 import { Vector3 } from '@dcl/sdk/math'
-import { movePlayerTo } from '~system/RestrictedActions'
+import { getPlayer } from '@dcl/sdk/players'
+import { movePlayerTo, triggerSceneEmote } from '~system/RestrictedActions'
 import { CHECKPOINT_COUNT, RACE, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
 import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
-import { getBikeX, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
+import { getBikeLean, getBikeX, getBikeY, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
 import { hideGhost, updateGhost } from './game/ghost'
 import { updateMusic } from './game/music'
-import { RIDER_ID, updateRider } from './game/rider'
 import { playWinSfx, prefillSpawner, resetSpawner, updateSpawner } from './game/spawner'
 import { scrollTrack, setWorldOffset } from './game/track'
 import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRaceStart } from './net'
@@ -30,15 +31,42 @@ import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRaceStart } from './
  * it's what gets reported to the server every 100 m.
  */
 
-/** The real avatar is parked here, hidden and frozen. */
-const PARK = Vector3.create(TRACK.centerX, 0, TRACK.playerZ - 3)
-/** If the avatar drifts further than this, it's sent back to the park spot. */
-const PARK_TOLERANCE = 5
-const PARK_COOLDOWN = 1.5
+/**
+ * Looping poses the avatar holds while riding, one per lean direction.
+ *
+ * The avatar's `Transform` can't be rotated from scene code, but an animation
+ * can: these are the same seated pose with the body banked, so the rider
+ * matches the bike's roll without anything moving it.
+ *
+ * One clip per file, and every name ends in `_emote.glb`: the runtime picks
+ * an emote by file — `triggerSceneEmote` takes no clip name — and rejects any
+ * other naming. They're split out of the authored `player_emote.glb`, which
+ * carries all three clips together.
+ */
+const RIDE_POSES = {
+  neutral: 'assets/models/player-idle_emote.glb',
+  left: 'assets/models/player-turn_L_emote.glb',
+  right: 'assets/models/player-turn_R_emote.glb'
+}
+/**
+ * Lean past which the rider swaps to a banked pose, in degrees.
+ *
+ * The bike's roll is continuous and the poses are not, so this is the point
+ * where switching reads as following the bike rather than twitching with it.
+ */
+const POSE_LEAN_THRESHOLD = 6
+/** How far ahead the avatar is aimed so it ends up facing down the track. */
+const FACING_AHEAD = 10
+/** How far the avatar may drift off the seat before it's put back, in meters. */
+const DRIFT_TOLERANCE = 1.5
+const RESEAT_COOLDOWN = 1
 /** Seconds the results screen waits for the server's verdict. */
 const RESULT_TIMEOUT = 10
 
-let parkCooldown = 0
+let hideAreaEntity: Entity = engine.RootEntity
+let ownAvatarExcluded = false
+let reseatCooldown = 0
+let ridePose: keyof typeof RIDE_POSES = 'neutral'
 /** Boost requested from the HUD button (mobile and click). */
 let uiBoost = false
 
@@ -48,17 +76,58 @@ export function initRace() {
   engine.addSystem(raceSystem)
 }
 
+/** Where the avatar sits: on the bike, which never leaves the center of the road. */
+function bikeSeat(): Vector3 {
+  return Vector3.create(TRACK.centerX, getBikeY(), TRACK.playerZ)
+}
+
 /**
- * Freezes and hides the real Decentraland avatar.
+ * Seats the avatar facing down the track and starts the looping ride pose.
  *
- * What the player sees riding is not this avatar but the `AvatarShape` clone
- * parented to the bike (see rider.ts): the real one is engine-controlled, so
- * it can't be parented to the bike and every reposition would interrupt its
- * animation. It's parked out of the way instead.
+ * `avatarTarget` is what settles the facing: without it the avatar keeps
+ * whatever yaw it walked into the scene with, and the emote carries no
+ * rotation of its own.
+ */
+function snapPlayerToSeat() {
+  const seat = bikeSeat()
+  void movePlayerTo({
+    newRelativePosition: seat,
+    // The world travels toward -Z, so forward for the bike is +Z.
+    avatarTarget: Vector3.create(seat.x, seat.y, seat.z + FACING_AHEAD)
+  }).then(() => playRidePose(ridePose, true))
+}
+
+function playRidePose(pose: keyof typeof RIDE_POSES, force = false) {
+  if (pose === ridePose && !force) return
+  ridePose = pose
+  void triggerSceneEmote({ src: RIDE_POSES[pose], loop: true })
+}
+
+/**
+ * Banks the rider with the bike.
  *
- * The avatar area covers the whole scene so other players' avatars don't show
- * up running down the track either. The re-parking below is the safety net
- * for explorers where `InputModifier` has no effect.
+ * Positive lean is the bike sliding toward +X, which is the player's right
+ * while facing down the track. Swap the two pose paths if it comes out
+ * mirrored — the sign lives in the animations, not here.
+ */
+function updateRidePose() {
+  const lean = getBikeLean()
+  if (lean > POSE_LEAN_THRESHOLD) return playRidePose('right')
+  if (lean < -POSE_LEAN_THRESHOLD) return playRidePose('left')
+  playRidePose('neutral')
+}
+
+/**
+ * Freezes the real Decentraland avatar on the bike.
+ *
+ * The avatar can't be parented to the bike — its `Transform` is
+ * engine-controlled — but it doesn't need to be: the bike stays at the center
+ * of the road and the world slides instead, so the avatar is seated once here
+ * and never touched again. That's what keeps the ride pose looping: any
+ * reposition interrupts it and drops the avatar back to walking animations.
+ *
+ * Leaning is handled the same way, through the rig rather than the entity:
+ * see `RIDE_POSES`.
  */
 function lockPlayer() {
   // The whole avatar is frozen, not just walking: `disableWalk`/`disableJog`/
@@ -76,10 +145,12 @@ function lockPlayer() {
   Transform.create(hideArea, { position: Vector3.create(TRACK.centerX, 10, TRACK.roadLength / 2) })
   AvatarModifierArea.create(hideArea, {
     area: Vector3.create(70, 40, TRACK.roadLength + 20),
+    // Other visitors' avatars stay hidden so they don't clutter the track; the
+    // local player is excluded once its address is known, since it's the rider.
     modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_DISABLE_PASSPORTS],
-    // The rider on the bike is an AvatarShape and sits inside this area too.
-    excludeIds: [RIDER_ID]
+    excludeIds: []
   })
+  hideAreaEntity = hideArea
 
   // Mobile: the native joystick doesn't work with locomotion disabled, and
   // lanes are changed with the UI buttons. No-op on desktop.
@@ -87,7 +158,21 @@ function lockPlayer() {
   TouchScreenControls.hideCrosshair()
   TouchScreenControls.hideAll()
 
-  void movePlayerTo({ newRelativePosition: PARK })
+  snapPlayerToSeat()
+}
+
+/**
+ * Keeps the local player visible while everyone else stays hidden.
+ *
+ * `getPlayer()` returns nothing on the first frames, so this keeps checking
+ * every tick until the address is known, then stops.
+ */
+function excludeOwnAvatarFromHiding() {
+  if (ownAvatarExcluded) return
+  const player = getPlayer()
+  if (!player) return
+  AvatarModifierArea.getMutable(hideAreaEntity).excludeIds = [player.userId]
+  ownAvatarExcluded = true
 }
 
 // --- Lifecycle ----------------------------------------------------------
@@ -178,12 +263,13 @@ function tickResultWait(dt: number) {
 function updateBikeAndWorld(dt: number) {
   updateBike(dt)
   setWorldOffset(getBikeX())
+  updateRidePose()
 }
 
 function raceSystem(dt: number) {
   state.clock += dt
-  keepPlayerParked(dt)
-  updateRider(dt)
+  excludeOwnAvatarFromHiding()
+  keepPlayerSeated(dt)
   tickToast(dt)
   tickResultWait(dt)
   updateMusic(dt)
@@ -345,20 +431,25 @@ function tickToast(dt: number) {
 }
 
 /**
- * Returns the hidden avatar to the park spot if it drifted away.
+ * Safety net, and nothing else.
  *
- * In explorers where `InputModifier` has no effect the player walks freely
- * and leaves the track; the cooldown avoids teleporting them every frame.
+ * The avatar is seated once and then left alone — re-seating it interrupts
+ * the ride pose. This only fires in explorers where `InputModifier` has no
+ * effect and the player can still walk off the bike.
+ *
+ * Y is left out of the comparison: the client grounds the avatar at its own
+ * height, so it never matches the seat exactly and would re-seat forever.
  */
-function keepPlayerParked(dt: number) {
-  if (parkCooldown > 0) {
-    parkCooldown -= dt
+function keepPlayerSeated(dt: number) {
+  if (reseatCooldown > 0) {
+    reseatCooldown -= dt
     return
   }
   const position = Transform.getOrNull(engine.PlayerEntity)?.position
   if (!position) return
-  if (Vector3.distance(position, PARK) <= PARK_TOLERANCE) return
+  const seat = bikeSeat()
+  if (Math.abs(position.x - seat.x) <= DRIFT_TOLERANCE && Math.abs(position.z - seat.z) <= DRIFT_TOLERANCE) return
 
-  parkCooldown = PARK_COOLDOWN
-  void movePlayerTo({ newRelativePosition: PARK })
+  reseatCooldown = RESEAT_COOLDOWN
+  snapPlayerToSeat()
 }
