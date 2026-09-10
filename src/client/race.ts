@@ -4,7 +4,6 @@ import {
   Entity,
   InputAction,
   InputModifier,
-  PointerEventType,
   TouchScreenControls,
   Transform,
   engine,
@@ -53,6 +52,13 @@ const FACING_AHEAD = 10
 /** How far the avatar may drift off the seat before it's put back, in meters. */
 const DRIFT_TOLERANCE = 1.5
 const RESEAT_COOLDOWN = 1
+/**
+ * Seconds between lane changes while a direction key is held down.
+ *
+ * Slightly under the ~0.29 s the slide itself takes, so a held key chains
+ * lanes without a pause between them while a tap still moves exactly one.
+ */
+const LANE_REPEAT_DELAY = 0.25
 /** Seconds the results screen waits for the server's verdict. */
 const RESULT_TIMEOUT = 10
 
@@ -60,6 +66,8 @@ let hideAreaEntity: Entity = engine.RootEntity
 let ownAvatarExcluded = false
 let reseatCooldown = 0
 let ridePose: keyof typeof RIDE_POSES = 'neutral'
+/** Time left before a held direction key moves another lane. */
+let laneRepeat = 0
 /** Boost requested from the HUD button (mobile and click). */
 let uiBoost = false
 
@@ -287,7 +295,7 @@ function raceSystem(dt: number) {
     return
   }
 
-  readLaneInput()
+  readLaneInput(dt)
   readBoostInput()
   updateBikeAndWorld(dt)
 
@@ -341,12 +349,30 @@ function tickCountdown(dt: number) {
   sendRaceStart()
 }
 
-function readLaneInput() {
-  if (inputSystem.isTriggered(InputAction.IA_LEFT, PointerEventType.PET_DOWN)) {
-    state.lane = moveLane(-1)
-  } else if (inputSystem.isTriggered(InputAction.IA_RIGHT, PointerEventType.PET_DOWN)) {
-    state.lane = moveLane(1)
+/**
+ * Lane changes, one per press and then repeating while the key is held.
+ *
+ * `isPressed`, not `isTriggered`: holding left from lane 1 should walk the
+ * bike to lane 0 and stop there, not sit still until the key is released.
+ * The first frame of a press moves immediately (`laneRepeat` is 0) and every
+ * `LANE_REPEAT_DELAY` after that moves one more lane. Holding both keys at
+ * once cancels out rather than picking a winner.
+ */
+function readLaneInput(dt: number) {
+  const left = inputSystem.isPressed(InputAction.IA_LEFT)
+  const right = inputSystem.isPressed(InputAction.IA_RIGHT)
+  const direction = left === right ? 0 : left ? -1 : 1
+
+  if (direction === 0) {
+    laneRepeat = 0
+    return
   }
+  if (laneRepeat > 0) {
+    laneRepeat -= dt
+    return
+  }
+  laneRepeat = LANE_REPEAT_DELAY
+  state.lane = moveLane(direction)
 }
 
 /**
