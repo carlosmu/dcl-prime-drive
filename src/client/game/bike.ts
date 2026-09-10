@@ -9,8 +9,8 @@ import { LANE_COUNT, SKINS, TRACK, findSkin, laneToX } from '../../shared/config
  * the bike doesn't travel either: it stays planted at the center of the road
  * and the world slides around it (see `setWorldOffset` in track.ts).
  * `currentX` is the lane it logically occupies — obstacles are tested against
- * it. It does roll, though: a rotation is the one thing the rider can match,
- * through an animation on its own rig.
+ * it. It doesn't roll from code either: the lean lives in the model's own
+ * `Bike_turn_L`/`Bike_turn_R` clips, fired once per lane change.
  *
  * The four skins are instantiated at startup and toggled with
  * `VisibilityComponent`: swapping `GltfContainer.src` on the fly would
@@ -27,10 +27,14 @@ export const BIKE_YAW_DEG = 0
 
 /** Lane change speed, in m/s. */
 const LANE_SPEED = 14
-/** Maximum lean angle when changing lanes, in degrees. */
-const MAX_LEAN_DEG = 30
-/** How fast the lean follows the lateral movement. */
-const LEAN_RESPONSE = 8
+/**
+ * Length of `Bike_turn_L`/`Bike_turn_R`, in seconds.
+ *
+ * The clips are one-shot, and nothing reports back when one ends, so the
+ * bike counts the time down itself and returns to idle. Keep this in sync
+ * with the GLB if the animations are re-exported.
+ */
+const TURN_DURATION = 0.484
 
 let root: Entity = engine.RootEntity
 const skinEntities = new Map<string, Entity>()
@@ -38,7 +42,9 @@ const skinEntities = new Map<string, Entity>()
 let currentSkinId = SKINS[0].id
 let targetLane = 1
 let currentX = laneToX(1)
-let lean = 0
+/** Direction of the turn clip currently playing: 1 right, -1 left, 0 none. */
+let turnDirection = 0
+let turnRemaining = 0
 
 export function buildBike() {
   root = engine.addEntity()
@@ -54,7 +60,11 @@ export function buildBike() {
     Animator.create(entity, {
       states: [
         { clip: skin.idleClip, playing: true, loop: true },
-        { clip: skin.goClip, playing: false, loop: true }
+        // `goClip` may be the idle one (see `BIKE_CLIPS`): declaring the same
+        // clip twice would give the Animator two states with one name.
+        ...(skin.goClip === skin.idleClip ? [] : [{ clip: skin.goClip, playing: false, loop: true }]),
+        { clip: skin.turnLClip, playing: false, loop: false },
+        { clip: skin.turnRClip, playing: false, loop: false }
       ]
     })
     VisibilityComponent.create(entity, { visible: skin.id === currentSkinId })
@@ -89,7 +99,27 @@ export function playIdle() {
 }
 
 export function setLane(lane: number) {
-  targetLane = Math.max(0, Math.min(LANE_COUNT - 1, lane))
+  const clamped = Math.max(0, Math.min(LANE_COUNT - 1, lane))
+  if (clamped === targetLane) return
+  const direction = Math.sign(clamped - targetLane)
+  targetLane = clamped
+  playTurn(direction)
+}
+
+/**
+ * Plays the lean for a lane change, once.
+ *
+ * The clip runs ~0.97 s while the slide itself takes ~0.29 s, so the bike is
+ * already in its new lane by the time it finishes straightening up. That's
+ * intentional: the animation is the whole lean, and it's restarted from the
+ * top when a second lane change comes in before it ends.
+ */
+function playTurn(direction: number) {
+  turnDirection = direction
+  turnRemaining = TURN_DURATION
+  const skin = findSkin(currentSkinId)
+  const entity = skinEntities.get(skin.id)
+  if (entity) Animator.playSingleAnimation(entity, direction > 0 ? skin.turnRClip : skin.turnLClip, true)
 }
 
 export function moveLane(direction: number): number {
@@ -109,43 +139,39 @@ export function getBikeY(): number {
   return Transform.get(root).position.y
 }
 
-/** Current roll in degrees, positive when sliding toward +X. Drives the rider's pose. */
-export function getBikeLean(): number {
-  return lean
+/**
+ * Which way the bike is leaning: 1 right, -1 left, 0 while upright.
+ *
+ * Follows the turn clip rather than the lateral slide, so the rider banks on
+ * the frame the key is pressed and stands back up when the bike's own
+ * animation does.
+ */
+export function getTurnDirection(): number {
+  return turnDirection
 }
 
 export function resetBike() {
   targetLane = 1
   currentX = laneToX(1)
-  lean = 0
-  applyTransform()
+  turnDirection = 0
+  turnRemaining = 0
+  playIdle()
 }
 
-/** Interpolates the lateral slide and the lean. */
+/** Interpolates the lateral slide and runs down the turn clip. */
 export function updateBike(dt: number) {
   const targetX = laneToX(targetLane)
   const diff = targetX - currentX
   const step = LANE_SPEED * dt
+  if (Math.abs(diff) <= step) currentX = targetX
+  else currentX += Math.sign(diff) * step
 
-  let velocity = 0
-  if (Math.abs(diff) <= step) {
-    velocity = diff / Math.max(dt, 0.0001)
-    currentX = targetX
-  } else {
-    const move = Math.sign(diff) * step
-    velocity = move / Math.max(dt, 0.0001)
-    currentX += move
+  if (turnRemaining > 0) {
+    turnRemaining -= dt
+    if (turnRemaining <= 0) {
+      turnRemaining = 0
+      turnDirection = 0
+      playIdle()
+    }
   }
-
-  const targetLean = Math.max(-1, Math.min(1, velocity / LANE_SPEED)) * MAX_LEAN_DEG
-  lean += (targetLean - lean) * Math.min(1, LEAN_RESPONSE * dt)
-  applyTransform()
-}
-
-function applyTransform() {
-  // Only the roll: the bike never leaves the center of the road, since
-  // `currentX` is the lane it logically occupies and the world is what slides
-  // sideways (see `setWorldOffset` in track.ts). The rider matches this angle
-  // through its own animation — see `RIDE_POSES` in race.ts.
-  Transform.getMutable(root).rotation = Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, -lean)
 }

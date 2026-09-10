@@ -15,7 +15,7 @@ import { getPlayer } from '@dcl/sdk/players'
 import { movePlayerTo, triggerSceneEmote } from '~system/RestrictedActions'
 import { CHECKPOINT_COUNT, RACE, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
 import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
-import { getBikeLean, getBikeX, getBikeY, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
+import { getBikeX, getBikeY, getTurnDirection, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
 import { hideGhost, updateGhost } from './game/ghost'
 import { updateMusic } from './game/music'
@@ -48,13 +48,6 @@ const RIDE_POSES = {
   left: 'assets/models/player-turn_L_emote.glb',
   right: 'assets/models/player-turn_R_emote.glb'
 }
-/**
- * Lean past which the rider swaps to a banked pose, in degrees.
- *
- * The bike's roll is continuous and the poses are not, so this is the point
- * where switching reads as following the bike rather than twitching with it.
- */
-const POSE_LEAN_THRESHOLD = 6
 /** How far ahead the avatar is aimed so it ends up facing down the track. */
 const FACING_AHEAD = 10
 /** How far the avatar may drift off the seat before it's put back, in meters. */
@@ -106,14 +99,17 @@ function playRidePose(pose: keyof typeof RIDE_POSES, force = false) {
 /**
  * Banks the rider with the bike.
  *
- * Positive lean is the bike sliding toward +X, which is the player's right
- * while facing down the track. Swap the two pose paths if it comes out
- * mirrored — the sign lives in the animations, not here.
+ * Both sides now follow the bike's own turn clip, so the rider leans on the
+ * frame the key is pressed and stands back up exactly when the bike does,
+ * instead of chasing a roll that decayed on its own.
+ *
+ * +X is the player's right while facing down the track. Swap the two pose
+ * paths if it comes out mirrored — the sign lives in the animations.
  */
 function updateRidePose() {
-  const lean = getBikeLean()
-  if (lean > POSE_LEAN_THRESHOLD) return playRidePose('right')
-  if (lean < -POSE_LEAN_THRESHOLD) return playRidePose('left')
+  const direction = getTurnDirection()
+  if (direction > 0) return playRidePose('right')
+  if (direction < 0) return playRidePose('left')
   playRidePose('neutral')
 }
 

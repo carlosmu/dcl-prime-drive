@@ -158,44 +158,63 @@ export type SkinDef = {
   /** Name of the running animation clip inside the .glb. */
   goClip: string
   idleClip: string
+  /** One-shot clips played on a lane change, one per direction. */
+  turnLClip: string
+  turnRClip: string
   tint: { r: number; g: number; b: number }
 }
+
+/**
+ * The only bike model so far: every skin points at it until the rest are
+ * authored. Its rig carries the turn animations, so the lean is played
+ * rather than rolled from code — see `bike.ts`.
+ */
+const BIKE_MODEL = 'assets/models/newbike_01.glb'
+
+/**
+ * Clip names inside `newbike_01.glb`.
+ *
+ * It has no separate running clip, so `goClip` reuses the idle one; a future
+ * model can override any of these per skin.
+ */
+const BIKE_CLIPS = {
+  goClip: 'Bike_idle',
+  idleClip: 'Bike_idle',
+  turnLClip: 'Bike_turn_L',
+  turnRClip: 'Bike_turn_R'
+} as const
 
 export const SKINS: SkinDef[] = [
   {
     id: 'nomad',
     name: 'Nomad',
-    model: 'assets/models/bike_01.glb',
+    model: BIKE_MODEL,
     price: 0,
-    goClip: 'go',
-    idleClip: 'idle',
+    ...BIKE_CLIPS,
     tint: { r: 0.35, g: 0.85, b: 1 }
   },
   {
     id: 'volt',
     name: 'Volt',
-    model: 'assets/models/bike_02.glb',
+    model: BIKE_MODEL,
     price: 1500,
-    goClip: 'go',
-    idleClip: 'idle',
+    ...BIKE_CLIPS,
     tint: { r: 0.6, g: 1, b: 0.35 }
   },
   {
     id: 'crimson',
     name: 'Crimson',
-    model: 'assets/models/bike_03.glb',
+    model: BIKE_MODEL,
     price: 4000,
-    goClip: 'go',
-    idleClip: 'idle',
+    ...BIKE_CLIPS,
     tint: { r: 1, g: 0.35, b: 0.35 }
   },
   {
     id: 'obsidian',
     name: 'Obsidian Strike',
-    model: 'assets/models/bike_04.glb',
+    model: BIKE_MODEL,
     price: 9000,
-    goClip: 'go',
-    idleClip: 'idle',
+    ...BIKE_CLIPS,
     tint: { r: 1, g: 0.82, b: 0.3 }
   }
 ]
