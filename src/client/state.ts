@@ -108,7 +108,8 @@ export const state = {
   // --- UI ---
   screen: 'home' as 'home' | 'garage' | 'ranking',
   musicOn: true,
-  debugOn: true,
+  /** Hidden by default: opened by tapping the menu logo 10 times. */
+  debugOn: false,
   result: null as RaceResult | null,
   toast: '',
   toastTimer: 0

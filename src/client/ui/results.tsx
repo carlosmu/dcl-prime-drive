@@ -83,14 +83,24 @@ export const Results = () => {
             onMouseDown={() => {
               if (!result.pending) startRace()
             }}
-            uiTransform={{ width: '48%', height: 76, margin: { right: '4%' } }}
+            uiTransform={{ width: '32%', height: 76, margin: { right: '2%' } }}
+          />
+          <Button
+            value="Ranking"
+            variant="secondary"
+            fontSize={26}
+            onMouseDown={() => {
+              backToMenu()
+              state.screen = 'ranking'
+            }}
+            uiTransform={{ width: '32%', height: 76, margin: { right: '2%' } }}
           />
           <Button
             value="Menu"
             variant="secondary"
             fontSize={26}
             onMouseDown={() => backToMenu()}
-            uiTransform={{ width: '48%', height: 76 }}
+            uiTransform={{ width: '32%', height: 76 }}
           />
         </UiEntity>
       </UiEntity>

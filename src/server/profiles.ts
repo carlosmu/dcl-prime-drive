@@ -1,5 +1,5 @@
 import { Storage } from '@dcl/sdk/server'
-import { DEFAULT_SKIN_ID, ECONOMY, SKINS, TRACK_ID } from '../shared/config'
+import { DEFAULT_SKIN_ID, ECONOMY, SKINS, TRACK_ID, isCompleteGhost } from '../shared/config'
 
 export type PlayerProfile = {
   coins: number
@@ -105,7 +105,11 @@ let ghostLoaded = false
 export async function loadGhost(): Promise<GhostRecord | null> {
   if (ghostLoaded) return ghostCache
   try {
-    ghostCache = await Storage.get<GhostRecord>(GHOST_KEY)
+    const stored = await Storage.get<GhostRecord>(GHOST_KEY)
+    // Only a race that covered every checkpoint can be replayed: a partial
+    // ghost freezes on the track once its splits run out.
+    ghostCache = stored && isCompleteGhost(stored.splits) ? stored : null
+    if (stored && !ghostCache) console.log(`[Server] discarding incomplete ghost (${stored.splits.length} splits)`)
   } catch (error) {
     console.log('[Server] could not read ghost:', error)
     ghostCache = null

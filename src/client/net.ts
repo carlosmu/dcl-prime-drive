@@ -1,7 +1,7 @@
 import { engine } from '@dcl/sdk/ecs'
 import { getPlayer } from '@dcl/sdk/players'
 import { isStateSyncronized } from '@dcl/sdk/network'
-import { DEFAULT_SKIN_ID, RACE, TRACK_ID, formatTime } from '../shared/config'
+import { DEFAULT_SKIN_ID, RACE, TRACK_ID, formatTime, isCompleteGhost } from '../shared/config'
 import { room } from '../shared/messages'
 import { ServerHeartbeat, TrackRecord } from '../shared/schemas'
 import { isOnline, showToast, state } from './state'
@@ -111,11 +111,13 @@ function registerHandlers() {
 
   room.onMessage('ghostSync', (data) => {
     markMessage()
-    state.ghostAvailable = data.available
+    // A ghost without every split would freeze mid-track: ignore it.
+    const available = data.available && isCompleteGhost(data.splits)
+    state.ghostAvailable = available
     state.ghostName = data.ownerName
     state.ghostTotalMs = data.totalMs
-    state.ghostSplits = data.splits.slice()
-    if (data.available) setGhostLabel(data.ownerName, data.totalMs)
+    state.ghostSplits = available ? data.splits.slice() : []
+    if (available) setGhostLabel(data.ownerName, data.totalMs)
   })
 
   room.onMessage('standings', (data) => {

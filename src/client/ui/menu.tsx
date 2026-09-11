@@ -4,6 +4,7 @@ import { isOnline, state } from '../state'
 import { startRace } from '../race'
 import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
+import { Color4 } from '@dcl/sdk/math'
 import { COLORS, Text } from './theme'
 
 /** Main menu: race, garage, and ranking. */
@@ -27,22 +28,15 @@ export const Menu = () => (
       uiBackground={{ color: COLORS.panel }}
     >
       <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
-        <Text value="PRIME DRIVE" size={54} width="54%" color={COLORS.accent} />
+        <UiEntity uiTransform={{ width: '76%', height: '100%' }} onMouseDown={() => tapLogo()}>
+          <Text value="PRIME DRIVE" size={54} color={COLORS.accent} />
+        </UiEntity>
         <Button
           value={state.musicOn ? 'Music: on' : 'Music: off'}
           variant="secondary"
           fontSize={20}
           onMouseDown={() => toggleMusic()}
-          uiTransform={{ width: '22%', height: 48, margin: { right: 12 } }}
-        />
-        <Button
-          value={state.debugOn ? 'Debug: on' : 'Debug: off'}
-          variant="secondary"
-          fontSize={20}
-          onMouseDown={() => {
-            state.debugOn = !state.debugOn
-          }}
-          uiTransform={{ width: '22%', height: 48 }}
+          uiTransform={{ width: '24%', height: 48 }}
         />
       </UiEntity>
       <Text
@@ -55,16 +49,13 @@ export const Menu = () => (
         <Tab id="home" label="Race" />
         <Tab id="garage" label="Garage" />
         <Tab id="ranking" label="Ranking" />
-        <Text
-          value={`${state.coins} coins`}
-          size={28}
-          width="30%"
-          align="middle-right"
-          color={COLORS.gold}
-        />
+        <UiEntity uiTransform={{ flexGrow: 1, height: 52 }}>
+          <Text value={`${state.coins} coins`} size={28} align="middle-right" color={COLORS.gold} />
+        </UiEntity>
       </UiEntity>
+      <UiEntity uiTransform={{ width: '100%', height: 2 }} uiBackground={{ color: COLORS.track }} />
 
-      <UiEntity uiTransform={{ width: '100%', height: 460, flexDirection: 'column', margin: { top: 16 } }}>
+      <UiEntity uiTransform={{ width: '100%', height: 440, flexDirection: 'column', margin: { top: 16 } }}>
         {state.screen === 'home' ? <Home /> : null}
         {state.screen === 'garage' ? <Garage /> : null}
         {state.screen === 'ranking' ? <Ranking /> : null}
@@ -73,17 +64,45 @@ export const Menu = () => (
   </UiEntity>
 )
 
-const Tab = (props: { id: 'home' | 'garage' | 'ranking'; label: string }) => (
-  <Button
-    value={props.label}
-    variant={state.screen === props.id ? 'primary' : 'secondary'}
-    fontSize={24}
-    onMouseDown={() => {
-      state.screen = props.id
-    }}
-    uiTransform={{ width: '22%', height: 52, margin: { right: 12 } }}
-  />
-)
+/** Taps on the logo needed to open the debug panel. */
+const DEBUG_TAPS = 10
+/** A longer gap between taps restarts the count. */
+const DEBUG_TAP_WINDOW = 2
+let logoTaps = 0
+let lastLogoTapAt = -Infinity
+
+function tapLogo() {
+  logoTaps = state.clock - lastLogoTapAt > DEBUG_TAP_WINDOW ? 1 : logoTaps + 1
+  lastLogoTapAt = state.clock
+  if (logoTaps < DEBUG_TAPS) return
+  logoTaps = 0
+  state.debugOn = true
+}
+
+/** Underlined tab: plain label, the active one gets the accent color and bar. */
+const Tab = (props: { id: 'home' | 'garage' | 'ranking'; label: string }) => {
+  const active = state.screen === props.id
+  return (
+    <UiEntity
+      uiTransform={{ width: 150, height: '100%', flexDirection: 'column', margin: { right: 8 } }}
+      onMouseDown={() => {
+        state.screen = props.id
+      }}
+    >
+      <Text
+        value={props.label.toUpperCase()}
+        size={24}
+        height={52}
+        align="middle-center"
+        color={active ? COLORS.text : COLORS.textDim}
+      />
+      <UiEntity
+        uiTransform={{ width: '100%', height: 4 }}
+        uiBackground={{ color: active ? COLORS.text : Color4.create(0, 0, 0, 0) }}
+      />
+    </UiEntity>
+  )
+}
 
 const Home = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>

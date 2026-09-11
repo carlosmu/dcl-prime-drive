@@ -1,7 +1,7 @@
 import { PlayerIdentityData, Transform, engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { EnvVar } from '@dcl/sdk/server'
-import { CHECKPOINT_COUNT, ECONOMY, SKINS, TRACK_ID, findSkin } from '../shared/config'
+import { CHECKPOINT_COUNT, ECONOMY, SKINS, TRACK_ID, findSkin, isCompleteGhost } from '../shared/config'
 import { room } from '../shared/messages'
 import { ServerHeartbeat, TrackRecord, protectServerEntity } from '../shared/schemas'
 import {
@@ -195,7 +195,7 @@ async function finishRace(address: string, report: FinishPayload) {
     }
 
     const ghost = await loadGhost()
-    if (!ghost || report.elapsedMs < ghost.totalMs) {
+    if (isCompleteGhost(run.splits) && (!ghost || report.elapsedMs < ghost.totalMs)) {
       newRecord = true
       awarded += ECONOMY.recordBonus
       const nextGhost: GhostRecord = {

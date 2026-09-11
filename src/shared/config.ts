@@ -41,7 +41,7 @@ export function laneToX(lane: number): number {
 
 export const RACE = {
   /** Total race distance, in meters. */
-  distanceM: 10000,
+  distanceM: 1000,
   /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
   /** Speed at the start, in m/s. */
@@ -228,9 +228,14 @@ export function findSkin(id: string): SkinDef {
 // ─── Track identifier ──────────────────────────────────────────────────
 
 /** Changing this id invalidates saved records and ghosts (useful when rebalancing). */
-export const TRACK_ID = 'neon-mile-v1'
+export const TRACK_ID = 'neon-mile-v2'
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
+
+/** A ghost is only replayable if it has one split per checkpoint up to the finish line. */
+export function isCompleteGhost(splits: number[]): boolean {
+  return splits.length === CHECKPOINT_COUNT
+}
 
 export function formatTime(totalMs: number): string {
   const safe = Math.max(0, Math.floor(totalMs))
