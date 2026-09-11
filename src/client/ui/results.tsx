@@ -53,6 +53,11 @@ export const Results = () => {
                 marginTop={6}
               />
             </UiEntity>
+          ) : result.accepted && !result.completed ? (
+            <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
+              <Text value="No coins credited" size={28} color={COLORS.danger} />
+              <Text value="Finish the race to keep the coins you pick up." size={22} color={COLORS.textDim} marginTop={6} />
+            </UiEntity>
           ) : result.accepted ? (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
               <Text value={`+${result.coinsAwarded} coins credited`} size={30} color={COLORS.gold} />

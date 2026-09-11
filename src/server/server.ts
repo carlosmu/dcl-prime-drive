@@ -184,8 +184,8 @@ async function finishRace(address: string, report: FinishPayload) {
 
   run.finished = true
 
-  let awarded = Math.floor(report.coins * coinMultiplier)
-  if (report.completed) awarded += ECONOMY.finishBonus
+  // Coins picked up only pay out if the race is completed.
+  let awarded = report.completed ? Math.floor(report.coins * coinMultiplier) + ECONOMY.finishBonus : 0
 
   let newRecord = false
   if (report.completed) {
