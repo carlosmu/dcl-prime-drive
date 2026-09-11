@@ -8,10 +8,14 @@ import { Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
 import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
-import { atlasIcon } from './hud'
+import { atlasIcon } from './atlas'
 
 /** Menu panel is 940 wide with 32 of padding on each side: what a text line can use. */
 const CONTENT_WIDTH = 876
+
+/** Logo art, A7:H8 of the atlas: 8 cells wide by 2 tall, so always 4:1. */
+const LOGO_WIDTH = 444
+const LOGO_HEIGHT = LOGO_WIDTH / 4
 
 const TRANSPARENT = Color4.create(0, 0, 0, 0)
 const RACE_BUTTON_COLOR = PRIMARY_COLOR
@@ -37,13 +41,30 @@ export const Menu = () => (
       }}
       uiBackground={{ color: COLORS.panel }}
     >
-      <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
-        <UiEntity uiTransform={{ flexGrow: 1, height: '100%' }} onMouseDown={() => tapLogo()}>
-          <Text value="PRIME DRIVE" size={54} highlight />
-        </UiEntity>
+      <UiEntity
+        uiTransform={{
+          width: '100%',
+          height: LOGO_HEIGHT,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'flex-end'
+        }}
+      >
+        {/* Absolute so the music button on the right doesn't push it off the panel's center. */}
+        <UiEntity
+          uiTransform={{
+            width: LOGO_WIDTH,
+            height: LOGO_HEIGHT,
+            positionType: 'absolute',
+            position: { left: (CONTENT_WIDTH - LOGO_WIDTH) / 2 }
+          }}
+          uiBackground={atlasIcon(0, 6, 8, 2)}
+          onMouseDown={() => tapLogo()}
+        />
         <MenuButton
           label={state.musicOn ? 'MUSIC: ON' : 'MUSIC: OFF'}
-          width={200}
+          icon={state.musicOn ? [4, 2] : [6, 2]}
+          width={64}
           height={48}
           onDown={() => toggleMusic()}
         />
@@ -118,7 +139,7 @@ const Tab = (props: { id: typeof state.screen; label: string }) => {
   )
 }
 
-/** Speedometer icon (C1:D2 of the atlas) + label in the bitmap font. */
+/** Atlas icon + label in the bitmap font. */
 const RaceButton = () => {
   const connecting = state.netStatus === 'connecting'
   return (
@@ -137,7 +158,7 @@ const RaceButton = () => {
         if (!connecting) startRace()
       }}
     >
-      <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 16 } }} uiBackground={atlasIcon(2, 0)} />
+      <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 16 } }} uiBackground={atlasIcon(2, connecting ? 0 : 2)} />
       <BitmapText text={connecting ? 'CONNECTING...' : 'RACE'} fontSize={40} color={Color4.White()} />
     </UiEntity>
   )

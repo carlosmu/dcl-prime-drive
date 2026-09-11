@@ -9,6 +9,13 @@
 // ─── Track ───────────────────────────────────────────────────────────────────
 
 /** The scene is 4x20 parcels: 64 m in X, 320 m in Z. */
+export const SCENE = {
+  /** Scene size in X (4 parcels). */
+  widthM: 64,
+  /** Scene size in Z (20 parcels). */
+  depthM: 320
+} as const
+
 export const TRACK = {
   /** Center of the road in X. */
   centerX: 32,

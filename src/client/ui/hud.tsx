@@ -6,6 +6,7 @@ import { livesLeft, state } from '../state'
 import { boostAmount, changeLane, pauseRace, setBoost } from '../race'
 import { PauseMenu } from './pause'
 import { PRIME_FONT } from './bitmapFont'
+import { atlasIcon } from './atlas'
 import { COLORS, PANEL_RADIUS, ProgressBar, Text } from './theme'
 
 /** Race HUD: time, coins, lives, and comparison with rivals. */
@@ -98,7 +99,8 @@ export const Hud = () => {
         />
       ) : null}
 
-      {state.phase === 'countdown' ? (
+      {/* 3, 2, 1 while the countdown runs, then GO! over the first moment of the race. */}
+      {state.phase === 'countdown' || state.elapsedMs < GO_FLASH_MS ? (
         <UiEntity
           uiTransform={{
             width: '100%',
@@ -106,13 +108,16 @@ export const Hud = () => {
             positionType: 'absolute',
             position: { top: '38%', left: '0%' }
           }}
-          uiText={{
-            value: state.countdown > 1 ? `${Math.ceil(state.countdown)}` : 'GO',
-            fontSize: 160,
-            color: COLORS.accent,
-            textAlign: 'middle-center'
-          }}
-        />
+        >
+          {/* COLORS.danger draws it with the pre-tinted red font, so it stays red on mobile too. */}
+          <Text
+            value={state.phase === 'countdown' ? `${Math.ceil(state.countdown)}` : 'GO!'}
+            size={160}
+            height={200}
+            align="middle-center"
+            color={COLORS.danger}
+          />
+        </UiEntity>
       ) : null}
 
       {/* Touch / click controls */}
@@ -155,22 +160,8 @@ export const Hud = () => {
 /** Bottom offset of the touch controls: 60 px + 5vh (54 px of the 1080 virtual height). */
 const CONTROLS_BOTTOM = 60 + 54
 
-const ATLAS = 'assets/images/atlas_01.png'
-const ATLAS_GRID = 8
-
-/** 2x2-cell icon from the 8x8 atlas; col/row are 0-based from the top-left (A1 = 0,0). */
-export function atlasIcon(col: number, row: number, size = 2) {
-  const s = 1 / ATLAS_GRID
-  const u0 = col * s
-  const u1 = (col + size) * s
-  const v1 = 1 - row * s
-  const v0 = 1 - (row + size) * s
-  return {
-    textureMode: 'stretch' as const,
-    texture: { src: ATLAS },
-    uvs: [u0, v0, u0, v1, u1, v1, u1, v0]
-  }
-}
+/** How long GO! stays on screen once the race starts. */
+const GO_FLASH_MS = 800
 
 /** `width` must fit the widest value: a text that overflows makes the row jump. */
 const HudStat = (props: {

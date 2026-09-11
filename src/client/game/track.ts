@@ -1,6 +1,6 @@
 import { Entity, GltfContainer, Material, MeshRenderer, Transform, engine } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { SPAWN, TRACK } from '../../shared/config'
+import { SCENE, SPAWN, TRACK } from '../../shared/config'
 
 /**
  * Track scenery: static road and scrolling elements.
@@ -94,18 +94,19 @@ export function scrollTrack(delta: number) {
 // --- Road ----------------------------------------------------------------
 
 /**
- * Ground filling the scene's full 64 m width, under the road.
+ * Ground covering the scene's full footprint (64 x 320 m), under the road.
  *
  * It's the one piece that does NOT hang from `worldRoot`: it already spans
  * the scene edge to edge, and sliding it sideways would push it out of
  * bounds. It runs under the road rather than flanking it, so no lane offset
- * can open a gap between them.
+ * can open a gap between them, and it's sized from the scene rather than
+ * from the road so it stays gapless if the road ever shrinks.
  */
 function buildGround() {
   const ground = engine.addEntity()
   Transform.create(ground, {
-    position: Vector3.create(TRACK.centerX, TRACK.roadY - 0.02, TRACK.roadLength / 2),
-    scale: Vector3.create(64, 0.08, TRACK.roadLength)
+    position: Vector3.create(SCENE.widthM / 2, TRACK.roadY - 0.02, SCENE.depthM / 2),
+    scale: Vector3.create(SCENE.widthM, 0.08, SCENE.depthM)
   })
   MeshRenderer.setBox(ground)
   Material.setPbrMaterial(ground, {

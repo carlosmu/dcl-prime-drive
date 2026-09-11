@@ -40,6 +40,7 @@ export const PauseMenu = () => (
       />
       <MenuButton
         label={state.musicOn ? 'MUSIC: ON' : 'MUSIC: OFF'}
+        icon={state.musicOn ? [4, 2] : [6, 2]}
         fontSize={TEXT_SIZE.md}
         width="100%"
         height={76}

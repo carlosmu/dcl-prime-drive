@@ -1,5 +1,6 @@
 import ReactEcs, { PositionUnit, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
+import { atlasIcon } from './atlas'
 import { BitmapText, PRIME_FONT_IMAGE, PRIME_FONT_IMAGE_RED, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 
 /** Palette and UI pieces reused by the three screens. */
@@ -38,7 +39,10 @@ export const PRIMARY_COLOR = Color4.create(0.98, 0.16, 0.33, 1)
  * system font). `primary` is filled; the rest are outlined in white.
  */
 export const MenuButton = (props: {
+  /** Ignored when `icon` is set. */
   label: string
+  /** Atlas cell (col, row) drawn instead of the label: see ./atlas. */
+  icon?: [number, number]
   width: PositionUnit
   height: number
   primary?: boolean
@@ -63,11 +67,18 @@ export const MenuButton = (props: {
       if (!props.disabled) props.onDown()
     }}
   >
-    <BitmapText
-      text={props.label}
-      fontSize={props.fontSize ?? TEXT_SIZE.sm}
-      color={props.disabled ? COLORS.textDim : COLORS.text}
-    />
+    {props.icon ? (
+      <UiEntity
+        uiTransform={{ width: props.height - 12, height: props.height - 12 }}
+        uiBackground={atlasIcon(...props.icon)}
+      />
+    ) : (
+      <BitmapText
+        text={props.label}
+        fontSize={props.fontSize ?? TEXT_SIZE.sm}
+        color={props.disabled ? COLORS.textDim : COLORS.text}
+      />
+    )}
   </UiEntity>
 )
 
