@@ -66,6 +66,9 @@ let hideAreaEntity: Entity = engine.RootEntity
 let ownAvatarExcluded = false
 let reseatCooldown = 0
 let ridePose: keyof typeof RIDE_POSES = 'neutral'
+/** Seconds until the seated pose is triggered again after sitting down. */
+const POSE_REFRESH_DELAY = 1.5
+let poseRefreshIn = 0
 /** Time left before a held direction key moves another lane. */
 let laneRepeat = 0
 /** Boost requested from the HUD button (mobile and click). */
@@ -95,13 +98,19 @@ function snapPlayerToSeat() {
     newRelativePosition: seat,
     // The world travels toward -Z, so forward for the bike is +Z.
     avatarTarget: Vector3.create(seat.x, seat.y, seat.z + FACING_AHEAD)
-  }).then(() => playRidePose(ridePose, true))
+  }).then(() => {
+    playRidePose(ridePose, true)
+    poseRefreshIn = POSE_REFRESH_DELAY
+  })
 }
 
 function playRidePose(pose: keyof typeof RIDE_POSES, force = false) {
   if (pose === ridePose && !force) return
   ridePose = pose
-  void triggerSceneEmote({ src: RIDE_POSES[pose], loop: true })
+  // Only the neutral pose loops. A turn plays once, like the bike's own turn
+  // clip: looping it left the rider leaning back and forth for as long as the
+  // neutral trigger that follows took to land (on mobile, indefinitely).
+  void triggerSceneEmote({ src: RIDE_POSES[pose], loop: pose === 'neutral' })
 }
 
 /**
@@ -114,7 +123,14 @@ function playRidePose(pose: keyof typeof RIDE_POSES, force = false) {
  * +X is the player's right while facing down the track. Swap the two pose
  * paths if it comes out mirrored — the sign lives in the animations.
  */
-function updateRidePose() {
+function updateRidePose(dt: number) {
+  // Second try at the seated pose after sitting down: on mobile the first
+  // trigger can land before the avatar is ready and it's left standing.
+  if (poseRefreshIn > 0) {
+    poseRefreshIn -= dt
+    if (poseRefreshIn <= 0 && getTurnDirection() === 0) playRidePose('neutral', true)
+  }
+
   const direction = getTurnDirection()
   if (direction > 0) return playRidePose('right')
   if (direction < 0) return playRidePose('left')
@@ -293,7 +309,7 @@ function tickResultWait(dt: number) {
 function updateBikeAndWorld(dt: number) {
   updateBike(dt)
   setWorldOffset(getBikeX())
-  updateRidePose()
+  updateRidePose(dt)
 }
 
 function raceSystem(dt: number) {
