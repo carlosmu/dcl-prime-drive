@@ -27,6 +27,8 @@ const VOLUME_EPSILON = 0.004
 
 let entity: Entity = engine.RootEntity
 let volume = IDLE_VOLUME
+/** Seconds left of the win jingle: the track stays silent until it runs out. */
+let duckRemaining = 0
 
 export function buildMusic() {
   entity = engine.addEntity()
@@ -40,8 +42,21 @@ export function buildMusic() {
   })
 }
 
+/**
+ * Silences the track for `seconds` so a one-shot jingle plays on its own, then
+ * lets it fade back in. Cuts instantly; the return is the usual fade.
+ */
+export function duckMusic(seconds: number) {
+  duckRemaining = Math.max(duckRemaining, seconds)
+  volume = 0
+  AudioSource.getMutable(entity).volume = 0
+}
+
 /** Interpolates toward the volume for the current phase. */
 export function updateMusic(dt: number) {
+  // A new race cancels the jingle's silence: the track comes back right away.
+  if (state.phase === 'racing' || state.phase === 'countdown') duckRemaining = 0
+  else if (duckRemaining > 0) duckRemaining = Math.max(0, duckRemaining - dt)
   const target = musicTarget()
   if (Math.abs(target - volume) < VOLUME_EPSILON) return
 
@@ -50,7 +65,7 @@ export function updateMusic(dt: number) {
 }
 
 function musicTarget(): number {
-  if (!state.musicOn) return 0
+  if (!state.musicOn || duckRemaining > 0) return 0
   return state.phase === 'racing' || state.phase === 'countdown' ? RACE_VOLUME : IDLE_VOLUME
 }
 
@@ -60,6 +75,7 @@ function musicTarget(): number {
  */
 export function toggleMusic() {
   state.musicOn = !state.musicOn
+  duckRemaining = 0
   volume = musicTarget()
   AudioSource.getMutable(entity).volume = volume
 }

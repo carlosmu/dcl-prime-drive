@@ -250,20 +250,21 @@ const Home = () => (
 
     {/* Pushes the server status down, right above the RACE button. */}
     <UiEntity uiTransform={{ width: '100%', flexGrow: 1 }} />
-    <Text value={netStatusLine()} size={TEXT_SIZE.sm} color={netStatusColor()} maxWidth={CONTENT_WIDTH} />
+    {/* Only worth saying when something is wrong: connected is the expected case. */}
+    {state.netStatus === 'online' ? null : (
+      <Text value={netStatusLine()} size={TEXT_SIZE.sm} color={netStatusColor()} maxWidth={CONTENT_WIDTH} />
+    )}
   </UiEntity>
 )
 
 function netStatusLine(): string {
-  if (state.netStatus === 'online') return 'Server connected: coins and records are saved.'
   if (state.netStatus === 'connecting') return 'Looking for the race server...'
-  return "No server: you can still race, but coins won't be credited and records won't be saved."
+  return "Server disconnected: you can race, but no progress will be saved - no coins, no records."
 }
 
 function netStatusColor() {
-  if (state.netStatus === 'online') return COLORS.accent
   if (state.netStatus === 'connecting') return COLORS.textDim
-  return COLORS.gold
+  return COLORS.danger
 }
 
 const Garage = () => (
@@ -314,17 +315,16 @@ const Garage = () => (
         </UiEntity>
       )
     })}
-    <Text
-      value={
-        isOnline()
-          ? 'Balance and purchases are handled by the server: the UI only shows what it confirms.'
-          : "The garage needs the server: without it there's no balance to spend."
-      }
-      size={TEXT_SIZE.sm}
-      color={isOnline() ? COLORS.textDim : COLORS.gold}
-      marginTop={12}
-      maxWidth={CONTENT_WIDTH}
-    />
+    {/* Only the offline warning is worth screen space: online, the server's role is invisible to the player. */}
+    {isOnline() ? null : (
+      <Text
+        value="The garage needs the server: without it there's no balance to spend."
+        size={TEXT_SIZE.sm}
+        color={COLORS.gold}
+        marginTop={12}
+        maxWidth={CONTENT_WIDTH}
+      />
+    )}
   </UiEntity>
 )
 

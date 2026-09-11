@@ -2,6 +2,7 @@ import { Animator, AudioSource, Entity, GltfContainer, Material, MeshRenderer, T
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
 import { LANE_COUNT, RACE, SPAWN, TRACK, laneToX } from '../../shared/config'
 import { getWorldRoot } from './track'
+import { duckMusic } from './music'
 
 /**
  * Coins, obstacles, and checkpoint arches.
@@ -19,6 +20,8 @@ const ARCH_MODEL = 'assets/models/obstacle_gate.glb'
 const COIN_SFX = 'assets/sounds/coin.mp3'
 const CRASH_SFX = 'assets/sounds/losetrumpet.mp3'
 const WIN_SFX = 'assets/sounds/won.mp3'
+/** Length of WIN_SFX: the background track stays silent for exactly that long. */
+const WIN_SFX_SECONDS = 9
 
 /** Meters of track visible ahead of the player. */
 const LOOKAHEAD_M = TRACK.spawnZ - TRACK.playerZ
@@ -203,6 +206,7 @@ function buildCone(): PoolItem {
 
 /** Finish-line jingle. */
 export function playWinSfx() {
+  duckMusic(WIN_SFX_SECONDS)
   AudioSource.createOrReplace(winSfx, {
     audioClipUrl: WIN_SFX,
     loop: false,
