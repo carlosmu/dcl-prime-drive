@@ -12,7 +12,7 @@ import { COLORS } from './theme'
  * alive and the CRDT channel is arriving. If it's at `--`, there's no server.
  * If it's frozen on a number, the server started and then went down.
  *
- * Can be turned off from the menu.
+ * Hidden by default: tap the menu logo 10 times to open it, X to close.
  */
 
 const ROW_HEIGHT = 22
@@ -52,6 +52,14 @@ export const DebugPanel = () => (
       color={state.invalidated ? COLORS.danger : COLORS.text}
     />
     <Row label="track" value={`${TRACK_ID} - clock ${state.clock.toFixed(1)}s`} />
+
+    <UiEntity
+      uiTransform={{ width: 32, height: 32, positionType: 'absolute', position: { top: 4, right: 4 } }}
+      uiText={{ value: 'X', fontSize: 20, color: COLORS.text, textAlign: 'middle-center' }}
+      onMouseDown={() => {
+        state.debugOn = false
+      }}
+    />
   </UiEntity>
 )
 
