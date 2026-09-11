@@ -93,6 +93,8 @@ export const PRIME_FONT: BitmapFont = parseFnt(PRIME_FONT_FNT_SOURCE)
 export const PRIME_FONT_IMAGE = 'assets/images/font.png'
 // Same glyph layout, pre-tinted yellow: the highlight color that also works on mobile.
 export const PRIME_FONT_IMAGE_YELLOW = 'assets/images/font-yellow.png'
+// Pre-tinted red: the danger color (COLORS.danger) on every platform.
+export const PRIME_FONT_IMAGE_RED = 'assets/images/font-red.png'
 
 // uvs go bottom-left, top-left, top-right, bottom-right (clockwise), per PBUiBackground. The .fnt's
 // x/y are pixel coords from the sheet's top-left, so v (bottom-up) is the inverse of y (top-down).

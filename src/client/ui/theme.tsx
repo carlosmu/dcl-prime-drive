@@ -1,6 +1,6 @@
 import ReactEcs, { PositionUnit, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
-import { BitmapText, PRIME_FONT_IMAGE, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
+import { BitmapText, PRIME_FONT_IMAGE, PRIME_FONT_IMAGE_RED, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 
 /** Palette and UI pieces reused by the three screens. */
 export const COLORS = {
@@ -52,6 +52,8 @@ export const Text = (props: {
   maxWidth?: number
 }) => {
   const align = props.align ?? 'middle-left'
+  // COLORS.danger swaps to the pre-tinted red font so it also shows red on mobile.
+  const isDanger = props.color === COLORS.danger
   return (
     <UiEntity
       uiTransform={{
@@ -66,9 +68,10 @@ export const Text = (props: {
       <BitmapText
         text={props.value}
         fontSize={props.size ?? 24}
-        // The yellow is baked into the png: tinting it too would darken it on desktop.
-        image={props.highlight ? PRIME_FONT_IMAGE_YELLOW : PRIME_FONT_IMAGE}
-        color={props.highlight ? Color4.White() : props.color ?? COLORS.text}
+        // Yellow/red are baked into the png (tint isn't honored on mobile); tinting them too would
+        // darken them on desktop.
+        image={props.highlight ? PRIME_FONT_IMAGE_YELLOW : isDanger ? PRIME_FONT_IMAGE_RED : PRIME_FONT_IMAGE}
+        color={props.highlight || isDanger ? Color4.White() : props.color ?? COLORS.text}
         maxWidth={props.maxWidth}
         align={align === 'middle-center' ? 'center' : align === 'middle-right' ? 'right' : 'left'}
       />
