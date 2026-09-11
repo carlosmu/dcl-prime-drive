@@ -28,7 +28,7 @@ export const Hud = () => {
           width: '50%',
           height: 142,
           positionType: 'absolute',
-          position: { top: 24, left: '25%' },
+          position: { top: 0, left: '25%' },
           flexDirection: 'column',
           padding: { left: 24, right: 24, top: 12, bottom: 12 }
         }}
@@ -52,8 +52,8 @@ export const Hud = () => {
           />
         </UiEntity>
 
-        <UiEntity uiTransform={{ width: '100%', height: 20, margin: { top: 6 } }}>
-          <ProgressBar progress={progress} markers={markers} />
+        <UiEntity uiTransform={{ width: '100%', height: 5, margin: { top: 6 } }}>
+          <ProgressBar progress={progress} markers={markers} height={4.5} />
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: 34, flexDirection: 'row', margin: { top: 6 } }}>

@@ -7,7 +7,10 @@ import { Results } from './results'
 import { COLORS } from './theme'
 
 export function setupUi() {
-  ReactEcsRenderer.setUiRenderer(Root, { virtualWidth: 1920, virtualHeight: 1080 })
+  // screenInset: 'none' keeps the UI on the whole screen. The SDK defaults to
+  // 'device', which insets it by UiCanvasInformation.screenInsetArea (notch,
+  // status bar) on mobile and pushes the HUD away from the top edge.
+  ReactEcsRenderer.setUiRenderer(Root, { virtualWidth: 1920, virtualHeight: 1080, screenInset: 'none' })
 }
 
 /**
