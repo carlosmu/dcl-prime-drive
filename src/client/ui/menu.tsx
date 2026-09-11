@@ -10,11 +10,21 @@ import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from
 import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 import { LEVEL_ART_RATIO, atlasIcon, levelThumb } from './atlas'
 
-/** Menu panel is 940 wide with 32 of padding on each side: what a text line can use. */
-const CONTENT_WIDTH = 876
+const PANEL_PADDING = 32
+/**
+ * Panel size. On mobile it fills the height and takes 40% of the width; on
+ * desktop it's a fixed 940-wide card.
+ */
+const PANEL_WIDTH = isMobile() ? '50%' : 940
+const PANEL_HEIGHT = isMobile() ? '100%' : '80vh'
+/**
+ * What a line of content can use, in px: the UI is laid out against the same
+ * 1920x1080 virtual screen the HUD assumes, so 40% of the width is 768.
+ */
+const CONTENT_WIDTH = (isMobile() ? 768 : 940) - 2 * PANEL_PADDING
 
 /** Logo art, A7:H8 of the atlas: 8 cells wide by 2 tall, so always 4:1. */
-const LOGO_WIDTH = 444
+const LOGO_WIDTH = isMobile() ? 360 : 444
 const LOGO_HEIGHT = LOGO_WIDTH / 4
 
 /**
@@ -50,10 +60,10 @@ export const Menu = () => (
   >
     <UiEntity
       uiTransform={{
-        width: 940,
-        height: '80vh',
+        width: PANEL_WIDTH,
+        height: PANEL_HEIGHT,
         flexDirection: 'column',
-        padding: 32,
+        padding: PANEL_PADDING,
         borderRadius: PANEL_RADIUS
       }}
       uiBackground={{ color: COLORS.panel }}
@@ -196,7 +206,8 @@ const Tutorial = () => (
   <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
     {/* Touch controls on mobile, keyboard on desktop. The font has no em dash or arrows. */}
     <ControlLine keys={isMobile() ? ['ARROWS'] : ['A', 'D']} action="Change lanes" first />
-    <ControlLine keys={isMobile() ? ['BOOST'] : ['SPACE']} action="Boost" />
+    {/* The mobile key IS the word Boost, so name what it does instead. */}
+    <ControlLine keys={isMobile() ? ['BOOST'] : ['SPACE']} action="Speed up" />
 
     <TutorialGap />
     <TutorialLine value="Dodge obstacles & collect coins." />
