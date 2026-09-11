@@ -48,13 +48,15 @@ export const Text = (props: {
    * `color` is a runtime tint that mobile ignores, so it can't mark importance on its own.
    */
   highlight?: boolean
+  /** Word-wraps at this width in px. The height then grows with the lines. */
+  maxWidth?: number
 }) => {
   const align = props.align ?? 'middle-left'
   return (
     <UiEntity
       uiTransform={{
         width: props.width ?? '100%',
-        height: props.height ?? (props.size ?? 24) * 1.5,
+        height: props.height ?? (props.maxWidth !== undefined ? 'auto' : (props.size ?? 24) * 1.5),
         margin: { top: props.marginTop ?? 0 },
         flexDirection: 'row',
         alignItems: align === 'top-left' ? 'flex-start' : 'center',
@@ -67,6 +69,7 @@ export const Text = (props: {
         // The yellow is baked into the png: tinting it too would darken it on desktop.
         image={props.highlight ? PRIME_FONT_IMAGE_YELLOW : PRIME_FONT_IMAGE}
         color={props.highlight ? Color4.White() : props.color ?? COLORS.text}
+        maxWidth={props.maxWidth}
         align={align === 'middle-center' ? 'center' : align === 'middle-right' ? 'right' : 'left'}
       />
     </UiEntity>

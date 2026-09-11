@@ -50,6 +50,7 @@ export const Results = () => {
               <Text
                 value="Coins are not credited and the time does not enter the ranking."
                 size={22}
+                maxWidth={696}
                 color={COLORS.textDim}
                 marginTop={6}
               />
@@ -57,7 +58,13 @@ export const Results = () => {
           ) : result.accepted && !result.completed ? (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
               <Text value="No coins credited" size={28} color={COLORS.danger} />
-              <Text value="Finish the race to keep the coins you pick up." size={22} color={COLORS.textDim} marginTop={6} />
+              <Text
+                value="Finish the race to keep the coins you pick up."
+                size={22}
+                color={COLORS.textDim}
+                marginTop={6}
+                maxWidth={696}
+              />
             </UiEntity>
           ) : result.accepted ? (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
@@ -70,7 +77,7 @@ export const Results = () => {
           ) : (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
               <Text value="The server rejected the race" size={28} color={COLORS.danger} />
-              <Text value={result.reason} size={22} color={COLORS.textDim} marginTop={6} />
+              <Text value={result.reason} size={22} color={COLORS.textDim} marginTop={6} maxWidth={696} />
             </UiEntity>
           )}
         </UiEntity>

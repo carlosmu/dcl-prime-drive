@@ -12,7 +12,7 @@ import { SPAWN, TRACK } from '../../shared/config'
  */
 
 const BUILDING_MODELS = [
-  'assets/models/building_01.glb',
+  'assets/models/building-01.gltf',
   'assets/models/building_02.glb',
   'assets/models/building_03.glb'
 ]

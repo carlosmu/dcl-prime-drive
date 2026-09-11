@@ -143,6 +143,8 @@ const Home = () => (
     <Text
       value={'Change lanes with A / D or the buttons. Dodge, collect coins, and hold on for 10 km.'}
       size={22}
+      // Menu panel is 940 wide with 32 of padding on each side.
+      maxWidth={876}
       color={COLORS.textDim}
       marginTop={20}
     />
