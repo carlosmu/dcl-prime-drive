@@ -370,7 +370,8 @@ function netStatusColor() {
 }
 
 const Garage = () => (
-  <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
+  // Scrolls: the skin list is longer than the panel from Nomad down to Obsidian.
+  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column', overflow: 'scroll' }}>
     <Text value={`${state.coins} coins`} size={TEXT_SIZE.lg} highlight />
     <UiEntity uiTransform={{ width: '100%', height: 10 }} />
     {SKINS.map((skin) => {
@@ -383,6 +384,7 @@ const Garage = () => (
           uiTransform={{
             width: '100%',
             height: 92,
+            flexShrink: 0,
             flexDirection: 'row',
             alignItems: 'center',
             padding: { left: 18, right: 18 },
@@ -431,7 +433,8 @@ const Garage = () => (
 )
 
 const Ranking = () => (
-  <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
+  // Scrolls: the board holds more entries than fit on screen.
+  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column', overflow: 'scroll' }}>
     {state.leaderboard.length === 0 ? (
       <Text
         value="No times recorded on this track yet."
@@ -446,6 +449,7 @@ const Ranking = () => (
           uiTransform={{
             width: '100%',
             height: 54,
+            flexShrink: 0,
             flexDirection: 'row',
             alignItems: 'center',
             padding: { left: 18, right: 18 },
