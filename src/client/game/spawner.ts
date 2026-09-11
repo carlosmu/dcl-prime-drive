@@ -65,7 +65,17 @@ type PoolItem = {
    * without this some would float and others would end up buried.
    */
   spawnY: number
+  /**
+   * Seconds left pinned on the bike playing the catch clip. While it runs the
+   * piece no longer travels with the track.
+   */
+  catchTimer?: number
 }
+
+/** How long a grabbed coin stays on the bike playing its catch clip. */
+const COIN_CATCH_SECONDS = 0.6
+/** Height a grabbed coin is lifted to, so the rider doesn't cover it. */
+const COIN_CATCH_Y = 1.8
 
 const coins: PoolItem[] = []
 const obstacles: PoolItem[] = []
@@ -230,6 +240,7 @@ export function prefillSpawner() {
  * @param canBeHit false during post-crash invulnerability
  */
 export function updateSpawner(
+  dt: number,
   delta: number,
   distanceM: number,
   bikeX: number,
@@ -238,15 +249,22 @@ export function updateSpawner(
 ) {
   spawnDue(distanceM)
 
-  moveAndTest(coins, delta, bikeX, (item, dx) => {
+  moveAndTest(coins, dt, delta, bikeX, (item, dx) => {
     if (dx > COIN_GRAB_HALF_WIDTH) return false
+    // Pinned on the bike instead of traveling on toward the camera: on narrow
+    // (mobile) screens the coin left the frame before the clip could be seen.
+    const transform = Transform.getMutable(item.entity)
+    transform.position.x = bikeX
+    transform.position.y = COIN_CATCH_Y
+    transform.position.z = TRACK.playerZ
+    item.catchTimer = COIN_CATCH_SECONDS
     Animator.playSingleAnimation(item.entity, COIN_CATCH_CLIP, true)
     playCoinSfx()
     events.onCoin()
     return true
   })
 
-  moveAndTest(obstacles, delta, bikeX, (item, dx) => {
+  moveAndTest(obstacles, dt, delta, bikeX, (item, dx) => {
     if (!canBeHit) return false
     if (dx > item.halfWidth + BIKE_HALF_WIDTH) return false
     AudioSource.createOrReplace(crashSfx, {
@@ -261,7 +279,7 @@ export function updateSpawner(
     return true
   })
 
-  moveAndTest(arches, delta, bikeX, () => false)
+  moveAndTest(arches, dt, delta, bikeX, () => false)
 }
 
 /**
@@ -270,17 +288,28 @@ export function updateSpawner(
  * The test is crossing-based, not proximity-based: at 60 m/s and 30 fps a
  * piece advances 2 m per frame and a distance window would skip right over it.
  *
- * Consumed pieces aren't parked immediately: they keep traveling until out of
- * camera view, so the coin's catch animation can be seen.
+ * Consumed pieces aren't parked immediately: obstacles keep traveling until
+ * out of camera view, and a grabbed coin stays pinned on the bike (see
+ * `catchTimer`) until its catch animation has played.
  */
 function moveAndTest(
   pool: PoolItem[],
+  dt: number,
   delta: number,
   bikeX: number,
   onCross: (item: PoolItem, dx: number) => boolean
 ) {
   for (const item of pool) {
     if (!item.active) continue
+
+    if (item.catchTimer !== undefined && item.catchTimer > 0) {
+      item.catchTimer -= dt
+      // Follows the bike across lanes so it doesn't hang where it was grabbed.
+      Transform.getMutable(item.entity).position.x = bikeX
+      if (item.catchTimer <= 0) park(item)
+      continue
+    }
+
     const transform = Transform.getMutable(item.entity)
     const previousZ = transform.position.z
     const z = previousZ - delta
@@ -297,6 +326,7 @@ function moveAndTest(
 function park(item: PoolItem) {
   item.active = false
   item.consumed = false
+  item.catchTimer = 0
   const transform = Transform.getMutable(item.entity)
   transform.position.y = PARKED_Y
   transform.position.z = 0

@@ -345,7 +345,7 @@ function raceSystem(dt: number) {
   state.elapsedMs += dt * 1000
 
   scrollTrack(delta)
-  updateSpawner(delta, state.distanceM, getBikeX(), state.invulnerableFor <= 0, {
+  updateSpawner(dt, delta, state.distanceM, getBikeX(), state.invulnerableFor <= 0, {
     onCoin: () => {
       state.runCoins += 1
     },
