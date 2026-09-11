@@ -406,12 +406,12 @@ const Garage = () => (
             ) : owned ? (
               <MenuButton label="EQUIP" width="100%" height={56} onDown={() => requestEquipSkin(skin.id)} />
             ) : (
+              // Buying is off until the extra bikes ship: the price still shows what they'll cost.
               <MenuButton
-                label="BUY"
+                label="COMING SOON"
                 width="100%"
                 height={56}
-                primary
-                disabled={!affordable}
+                disabled
                 onDown={() => requestBuySkin(skin.id)}
               />
             )}

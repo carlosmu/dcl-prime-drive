@@ -18,6 +18,8 @@ const CONE_MODEL = 'assets/models/obstacle_cone.glb'
 const ARCH_MODEL = 'assets/models/obstacle_gate.glb'
 
 const COIN_SFX = 'assets/sounds/coin.mp3'
+/** Low: a wave of coins fires several of these on top of each other. */
+const COIN_VOLUME = 0.3
 const CRASH_SFX = 'assets/sounds/lose_a_chance.mp3'
 const WIN_SFX = 'assets/sounds/won.mp3'
 /** Length of WIN_SFX: the background track stays silent for exactly that long. */
@@ -137,7 +139,13 @@ export function buildSpawner() {
   for (let i = 0; i < 5; i++) {
     const entity = engine.addEntity()
     Transform.create(entity, { position: Vector3.create(TRACK.centerX, 2, TRACK.playerZ) })
-    AudioSource.create(entity, { audioClipUrl: COIN_SFX, loop: false, playing: false, global: true, volume: 1 })
+    AudioSource.create(entity, {
+      audioClipUrl: COIN_SFX,
+      loop: false,
+      playing: false,
+      global: true,
+      volume: COIN_VOLUME
+    })
     coinSfx.push(entity)
   }
 
@@ -431,7 +439,7 @@ function playCoinSfx() {
     loop: false,
     playing: true,
     global: true,
-    volume: 1,
+    volume: COIN_VOLUME,
     currentTime: 0
   })
 }
