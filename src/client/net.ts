@@ -35,6 +35,10 @@ export function initNet() {
   engine.addSystem(heartbeatSystem)
 }
 
+/** Seconds to wait for the player's name before sending `hello` without it. */
+const NAME_TIMEOUT = 10
+let nameWaited = 0
+
 /**
  * Waits for the initial sync and sends `hello`.
  *
@@ -56,7 +60,15 @@ function handshakeSystem(dt: number) {
     return
   }
 
+  // The profile can arrive several frames after the state sync (noticeably on
+  // mobile). Sending `hello` without a name makes the server fall back to the
+  // short address, which then shows in the ranking and on the ghost.
   const player = getPlayer()
+  if (!player || player.name.trim().length === 0) {
+    nameWaited += dt
+    if (nameWaited < NAME_TIMEOUT) return
+  }
+
   state.myAddress = player?.userId ?? ''
   state.myName = player?.name ?? ''
   helloSent = true

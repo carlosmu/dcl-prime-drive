@@ -81,7 +81,9 @@ export function buildGhost() {
 export function setGhostLabel(ownerName: string, totalMs: number) {
   const minutes = Math.floor(totalMs / 60000)
   const seconds = Math.floor((totalMs % 60000) / 1000)
-  TextShape.getMutable(label).text = `${ownerName || 'RECORD'}\n${minutes}:${String(seconds).padStart(2, '0')}`
+  // Records saved without a display name carry the short wallet address: never show it.
+  const name = ownerName && !ownerName.startsWith('0x') ? ownerName : 'RECORD'
+  TextShape.getMutable(label).text = `${name}\n${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 export function hideGhost() {

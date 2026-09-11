@@ -156,6 +156,16 @@ function lockPlayer() {
   })
   hideAreaEntity = hideArea
 
+  // Name tags go in their own area: excludeIds exempts an avatar from every
+  // modifier of its area, so the rider's tag would survive in the one above.
+  const nametagArea = engine.addEntity()
+  Transform.create(nametagArea, { position: Vector3.create(TRACK.centerX, 10, TRACK.roadLength / 2) })
+  AvatarModifierArea.create(nametagArea, {
+    area: Vector3.create(70, 40, TRACK.roadLength + 20),
+    modifiers: [AvatarModifierType.AMT_HIDE_NAMETAGS],
+    excludeIds: []
+  })
+
   // Mobile: the native joystick doesn't work with locomotion disabled, and
   // lanes are changed with the UI buttons. No-op on desktop.
   TouchScreenControls.hideJoystick()
