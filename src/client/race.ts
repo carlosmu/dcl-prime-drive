@@ -12,7 +12,7 @@ import {
 import { Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { movePlayerTo, triggerSceneEmote } from '~system/RestrictedActions'
-import { CHECKPOINT_COUNT, RACE, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
+import { CHECKPOINT_COUNT, RACE, SCENE, SCENE_CENTER, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
 import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
 import { getBikeX, getBikeY, getTurnDirection, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
@@ -61,6 +61,14 @@ const RESEAT_COOLDOWN = 1
 const LANE_REPEAT_DELAY = 0.25
 /** Seconds the results screen waits for the server's verdict. */
 const RESULT_TIMEOUT = 10
+
+/**
+ * The modifier areas cover the whole scene, not just the strip of road: every
+ * player is seated on the same bike from the moment they load, so anyone the
+ * area misses shows up riding on top of the local rider.
+ */
+const HIDE_AREA_CENTER = Vector3.create(SCENE_CENTER.x, 40, SCENE_CENTER.z)
+const HIDE_AREA_SIZE = Vector3.create(SCENE.widthM, 120, SCENE.depthM)
 
 let hideAreaEntity: Entity = engine.RootEntity
 let ownAvatarExcluded = false
@@ -162,9 +170,9 @@ function lockPlayer() {
   })
 
   const hideArea = engine.addEntity()
-  Transform.create(hideArea, { position: Vector3.create(TRACK.centerX, 10, TRACK.roadLength / 2) })
+  Transform.create(hideArea, { position: HIDE_AREA_CENTER })
   AvatarModifierArea.create(hideArea, {
-    area: Vector3.create(70, 40, TRACK.roadLength + 20),
+    area: HIDE_AREA_SIZE,
     // Other visitors' avatars stay hidden so they don't clutter the track; the
     // local player is excluded once its address is known, since it's the rider.
     modifiers: [AvatarModifierType.AMT_HIDE_AVATARS, AvatarModifierType.AMT_DISABLE_PASSPORTS],
@@ -175,9 +183,9 @@ function lockPlayer() {
   // Name tags go in their own area: excludeIds exempts an avatar from every
   // modifier of its area, so the rider's tag would survive in the one above.
   const nametagArea = engine.addEntity()
-  Transform.create(nametagArea, { position: Vector3.create(TRACK.centerX, 10, TRACK.roadLength / 2) })
+  Transform.create(nametagArea, { position: HIDE_AREA_CENTER })
   AvatarModifierArea.create(nametagArea, {
-    area: Vector3.create(70, 40, TRACK.roadLength + 20),
+    area: HIDE_AREA_SIZE,
     modifiers: [AvatarModifierType.AMT_HIDE_NAMETAGS],
     excludeIds: []
   })
