@@ -1,5 +1,6 @@
 import ReactEcs, { PositionUnit, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
+import { BitmapText, PRIME_FONT_IMAGE, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 
 /** Palette and UI pieces reused by the three screens. */
 export const COLORS = {
@@ -42,21 +43,35 @@ export const Text = (props: {
   width?: PositionUnit
   height?: PositionUnit
   marginTop?: number
-}) => (
-  <UiEntity
-    uiTransform={{
-      width: props.width ?? '100%',
-      height: props.height ?? (props.size ?? 24) * 1.5,
-      margin: { top: props.marginTop ?? 0 }
-    }}
-    uiText={{
-      value: props.value,
-      fontSize: props.size ?? 24,
-      color: props.color ?? COLORS.text,
-      textAlign: props.align ?? 'middle-left'
-    }}
-  />
-)
+  /**
+   * Draws with the pre-tinted yellow font: use it for what matters most (titles, key numbers).
+   * `color` is a runtime tint that mobile ignores, so it can't mark importance on its own.
+   */
+  highlight?: boolean
+}) => {
+  const align = props.align ?? 'middle-left'
+  return (
+    <UiEntity
+      uiTransform={{
+        width: props.width ?? '100%',
+        height: props.height ?? (props.size ?? 24) * 1.5,
+        margin: { top: props.marginTop ?? 0 },
+        flexDirection: 'row',
+        alignItems: align === 'top-left' ? 'flex-start' : 'center',
+        justifyContent: align === 'middle-center' ? 'center' : align === 'middle-right' ? 'flex-end' : 'flex-start'
+      }}
+    >
+      <BitmapText
+        text={props.value}
+        fontSize={props.size ?? 24}
+        // The yellow is baked into the png: tinting it too would darken it on desktop.
+        image={props.highlight ? PRIME_FONT_IMAGE_YELLOW : PRIME_FONT_IMAGE}
+        color={props.highlight ? Color4.White() : props.color ?? COLORS.text}
+        align={align === 'middle-center' ? 'center' : align === 'middle-right' ? 'right' : 'left'}
+      />
+    </UiEntity>
+  )
+}
 
 /**
  * Horizontal progress bar.

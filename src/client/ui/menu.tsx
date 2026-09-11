@@ -29,7 +29,7 @@ export const Menu = () => (
     >
       <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
         <UiEntity uiTransform={{ width: '76%', height: '100%' }} onMouseDown={() => tapLogo()}>
-          <Text value="PRIME DRIVE" size={54} color={COLORS.accent} />
+          <Text value="PRIME DRIVE" size={54} highlight />
         </UiEntity>
         <Button
           value={state.musicOn ? 'Music: on' : 'Music: off'}
@@ -50,7 +50,7 @@ export const Menu = () => (
         <Tab id="garage" label="Garage" />
         <Tab id="ranking" label="Ranking" />
         <UiEntity uiTransform={{ flexGrow: 1, height: 52 }}>
-          <Text value={`${state.coins} coins`} size={28} align="middle-right" color={COLORS.gold} />
+          <Text value={`${state.coins} coins`} size={28} align="middle-right" highlight />
         </UiEntity>
       </UiEntity>
       <UiEntity uiTransform={{ width: '100%', height: 2 }} uiBackground={{ color: COLORS.track }} />
@@ -258,7 +258,7 @@ const Ranking = () => (
         >
           <Text value={`${index + 1}`} size={24} width="10%" color={COLORS.textDim} />
           <Text value={entry.name} size={24} width="60%" />
-          <Text value={formatTime(entry.timeMs)} size={24} width="30%" align="middle-right" color={COLORS.gold} />
+          <Text value={formatTime(entry.timeMs)} size={24} width="30%" align="middle-right" highlight />
         </UiEntity>
       ))
     )}

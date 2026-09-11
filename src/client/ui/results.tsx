@@ -26,7 +26,8 @@ export const Results = () => {
         <Text
           value={result.completed ? 'FINISH' : 'BIKE DESTROYED'}
           size={52}
-          color={result.completed ? COLORS.accent : COLORS.danger}
+          highlight={result.completed}
+          color={COLORS.danger}
         />
         <Text
           value={result.completed ? `Time ${formatTime(result.elapsedMs)}` : `You reached ${formatDistance(state.distanceM)}`}
@@ -60,7 +61,7 @@ export const Results = () => {
             </UiEntity>
           ) : result.accepted ? (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
-              <Text value={`+${result.coinsAwarded} coins credited`} size={30} color={COLORS.gold} />
+              <Text value={`+${result.coinsAwarded} coins credited`} size={30} highlight />
               <Text value={`Balance: ${state.coins}`} size={24} color={COLORS.textDim} marginTop={6} />
               {result.newRecord ? (
                 <Text value="New track record - your lap is the new ghost" size={24} color={COLORS.ghost} marginTop={6} />

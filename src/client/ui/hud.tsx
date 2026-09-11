@@ -37,14 +37,14 @@ export const Hud = () => {
         <UiEntity
           uiTransform={{ width: '100%', height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
-          <HudStat icon={[0, 0]} label="TIME" value={formatTime(state.elapsedMs)} width={170} />
+          <HudStat icon={[0, 0]} label="TIME" value={formatTime(state.elapsedMs)} width={170} highlight />
           <HudStat
             icon={[2, 0]}
             label="KM/H"
             value={`${Math.round(state.speed * 3.6)}`}
-            color={boost > 0.05 ? COLORS.gold : COLORS.accent}
+            highlight={boost > 0.05}
           />
-          <HudStat icon={[4, 0]} label="COINS" value={`${state.runCoins}`} color={COLORS.gold} />
+          <HudStat icon={[4, 0]} label="COINS" value={`${state.runCoins}`} highlight />
           <UiEntity
             uiTransform={{ width: 52, height: 52 }}
             uiBackground={atlasIcon(6, 0)}
@@ -194,14 +194,21 @@ function atlasIcon(col: number, row: number, size = 2) {
 }
 
 /** `width` must fit the widest value: a text that overflows makes the row jump. */
-const HudStat = (props: { icon: [number, number]; label: string; value: string; color?: Color4; width?: number }) => (
+const HudStat = (props: {
+  icon: [number, number]
+  label: string
+  value: string
+  color?: Color4
+  width?: number
+  highlight?: boolean
+}) => (
   <UiEntity uiTransform={{ height: '100%', flexDirection: 'row', alignItems: 'center' }}>
     <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 8 } }} uiBackground={atlasIcon(...props.icon)} />
     <UiEntity
       uiTransform={{ width: props.width ?? 110, height: '100%', flexDirection: 'column', justifyContent: 'center' }}
     >
       <Text value={props.label} size={16} height={20} color={COLORS.textDim} />
-      <Text value={props.value} size={28} height={32} color={props.color ?? COLORS.text} />
+      <Text value={props.value} size={28} height={32} color={props.color ?? COLORS.text} highlight={props.highlight} />
     </UiEntity>
   </UiEntity>
 )

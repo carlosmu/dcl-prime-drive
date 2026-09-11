@@ -21,7 +21,7 @@ export const PauseMenu = () => (
       uiTransform={{ width: 520, height: 432, flexDirection: 'column', alignItems: 'center', padding: 32 }}
       uiBackground={{ color: COLORS.panel }}
     >
-      <Text value="PAUSED" size={52} align="middle-center" color={COLORS.accent} />
+      <Text value="PAUSED" size={52} align="middle-center" highlight />
       <Button
         value="Resume"
         variant="primary"
