@@ -6,6 +6,7 @@ import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
 import { Color4 } from '@dcl/sdk/math'
 import { COLORS, PANEL_RADIUS, Text } from './theme'
+import { BitmapText } from './bitmapFont'
 
 /** Main menu: race, garage, and ranking. */
 export const Menu = () => (
@@ -50,16 +51,18 @@ export const Menu = () => (
         <Tab id="home" label="Race" />
         <Tab id="garage" label="Garage" />
         <Tab id="ranking" label="Ranking" />
+        <Tab id="tutorial" label="Tutorial" />
         <UiEntity uiTransform={{ flexGrow: 1, height: 52 }}>
           <Text value={`${state.coins} coins`} size={28} align="middle-right" highlight />
         </UiEntity>
       </UiEntity>
-      <UiEntity uiTransform={{ width: '100%', height: 2 }} uiBackground={{ color: COLORS.track }} />
+      <UiEntity uiTransform={{ width: '100%', height: 2 }} uiBackground={{ color: COLORS.text }} />
 
       <UiEntity uiTransform={{ width: '100%', height: 440, flexDirection: 'column', margin: { top: 16 } }}>
         {state.screen === 'home' ? <Home /> : null}
         {state.screen === 'garage' ? <Garage /> : null}
         {state.screen === 'ranking' ? <Ranking /> : null}
+        {state.screen === 'tutorial' ? <Tutorial /> : null}
       </UiEntity>
     </UiEntity>
   </UiEntity>
@@ -81,29 +84,64 @@ function tapLogo() {
 }
 
 /** Underlined tab: plain label, the active one gets the accent color and bar. */
-const Tab = (props: { id: 'home' | 'garage' | 'ranking'; label: string }) => {
+const Tab = (props: { id: typeof state.screen; label: string }) => {
   const active = state.screen === props.id
   return (
+    // Sized to its label (plus padding), not a fixed width.
     <UiEntity
-      uiTransform={{ width: 150, height: '100%', flexDirection: 'column', margin: { right: 8 } }}
+      uiTransform={{
+        height: '100%',
+        flexDirection: 'column',
+        margin: { right: 8 },
+        // Inactive tabs keep the same (transparent) border so nothing shifts on switch.
+        borderWidth: { top: 2, left: 2, right: 2, bottom: 0 },
+        borderColor: active ? COLORS.text : Color4.create(0, 0, 0, 0),
+        borderRadius: { topLeft: 12, topRight: 12 }
+      }}
       onMouseDown={() => {
         state.screen = props.id
       }}
     >
-      <Text
-        value={props.label.toUpperCase()}
-        size={24}
-        height={52}
-        align="middle-center"
-        color={active ? COLORS.text : COLORS.textDim}
-      />
-      <UiEntity
-        uiTransform={{ width: '100%', height: 4 }}
-        uiBackground={{ color: active ? COLORS.text : Color4.create(0, 0, 0, 0) }}
-      />
-    </UiEntity>
+      <UiEntity uiTransform={{ height: 52, alignItems: 'center', padding: { left: 16, right: 16 } }}>
+        <BitmapText text={props.label.toUpperCase()} fontSize={24} color={active ? COLORS.text : COLORS.textDim} />
+      </UiEntity>    </UiEntity>
   )
 }
+
+/** How to play. Menu panel is 940 wide with 32 of padding on each side. */
+const Tutorial = () => (
+  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
+    <Text value="HOW TO PLAY" size={30} highlight />
+    <Text
+      value="Change lanes with A / D or the arrow buttons."
+      size={22}
+      color={COLORS.textDim}
+      marginTop={16}
+      maxWidth={876}
+    />
+    <Text
+      value="Hold SPACE or the BOOST button to go faster."
+      size={22}
+      color={COLORS.textDim}
+      marginTop={10}
+      maxWidth={876}
+    />
+    <Text
+      value={`Dodge the obstacles, collect coins, and hold on for ${formatDistance(RACE.distanceM)}.`}
+      size={22}
+      color={COLORS.textDim}
+      marginTop={10}
+      maxWidth={876}
+    />
+    <Text
+      value={`You have ${RACE.lives} lives. Coins only count if you reach the finish line.`}
+      size={22}
+      color={COLORS.textDim}
+      marginTop={10}
+      maxWidth={876}
+    />
+  </UiEntity>
+)
 
 const Home = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
@@ -128,29 +166,17 @@ const Home = () => (
       color={COLORS.textDim}
       marginTop={8}
     />
-    <Text
-      value={
-        state.standings.length > 0
-          ? `${state.standings.length} racing now: ${state.standings
-              .slice(0, 3)
-              .map((r) => `${r.name} ${formatDistance(r.distanceM)}`)
-              .join('  |  ')}`
-          : 'Nobody else is racing right now.'
-      }
-      size={22}
-      color={COLORS.textDim}
-      marginTop={8}
-    />
-    <Text
-      value={'Change lanes with A / D or the buttons. Dodge, collect coins, and hold on for 10 km.'}
-      size={22}
-      // Menu panel is 940 wide with 32 of padding on each side.
-      maxWidth={876}
-      color={COLORS.textDim}
-      marginTop={20}
-    />
-
-    <Text value={netStatusLine()} size={22} color={netStatusColor()} marginTop={16} />
+    {state.standings.length > 0 ? (
+      <Text
+        value={`${state.standings.length} racing now: ${state.standings
+          .slice(0, 3)
+          .map((r) => `${r.name} ${formatDistance(r.distanceM)}`)
+          .join('  |  ')}`}
+        size={22}
+        color={COLORS.textDim}
+        marginTop={8}
+      />
+    ) : null}
 
     <Button
       value={state.netStatus === 'connecting' ? 'connecting...' : 'RACE'}
@@ -162,6 +188,10 @@ const Home = () => (
       }}
       uiTransform={{ width: '100%', height: 86, margin: { top: 16 } }}
     />
+
+    {/* Pushes the server status down to the bottom edge of the menu panel. */}
+    <UiEntity uiTransform={{ width: '100%', flexGrow: 1 }} />
+    <Text value={netStatusLine()} size={20} color={netStatusColor()} maxWidth={876} />
   </UiEntity>
 )
 

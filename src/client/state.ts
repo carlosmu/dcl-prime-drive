@@ -106,7 +106,7 @@ export const state = {
   stateSynced: false,
 
   // --- UI ---
-  screen: 'home' as 'home' | 'garage' | 'ranking',
+  screen: 'home' as 'home' | 'garage' | 'ranking' | 'tutorial',
   musicOn: true,
   /** Hidden by default: opened by tapping the menu logo 10 times. */
   debugOn: false,
