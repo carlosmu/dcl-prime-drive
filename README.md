@@ -210,7 +210,7 @@ for a new record. They're spent in the garage, on the 4 bike skins
 The road, shoulders, and neon rails are primitives with PBR material: zero
 textures and 5 entities for the 320 m of track.
 
-`assets/sounds/music.mp3` is the background music: it loops from the moment
+`assets/sounds/music_01.mp3` is the background music: it loops from the moment
 the scene loads, at low volume in the menu and louder during the race, with a
 toggle in the menu. It weighs 4 MB — by far the largest file in the project,
 so if a deploy comes out too heavy, that's the first one worth recompressing.
