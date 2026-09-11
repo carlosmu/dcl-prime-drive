@@ -112,6 +112,8 @@ export const state = {
 
   // --- UI ---
   screen: 'home' as 'home' | 'garage' | 'ranking' | 'tutorial',
+  /** Index into LEVELS: what the Race tab's selector is showing. */
+  selectedLevel: 0,
   musicOn: true,
   /** Hidden by default: opened by tapping the menu logo 10 times. */
   debugOn: false,

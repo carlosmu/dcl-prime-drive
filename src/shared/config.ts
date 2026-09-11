@@ -8,12 +8,28 @@
 
 // ─── Track ───────────────────────────────────────────────────────────────────
 
-/** The scene is 4x20 parcels: 64 m in X, 320 m in Z. */
+/**
+ * The scene is 32x32 parcels with base 16,0.
+ *
+ * Scene coordinates are relative to the base parcel, so X runs from -256 to
+ * 256 and Z from 0 to 512: the origin is NOT a corner. Anything that has to
+ * span the whole scene must be anchored on `SCENE_CENTER`, not on a half-size.
+ */
 export const SCENE = {
-  /** Scene size in X (4 parcels). */
-  widthM: 64,
-  /** Scene size in Z (20 parcels). */
-  depthM: 320
+  /** Scene size in X (32 parcels). */
+  widthM: 512,
+  /** Scene size in Z (32 parcels). */
+  depthM: 512,
+  /** Local X of the west edge (base parcel is 16 columns from the west one). */
+  minX: -256,
+  /** Local Z of the south edge. */
+  minZ: 0
+} as const
+
+/** Center of the scene, where the ground and the backdrop are anchored. */
+export const SCENE_CENTER = {
+  x: SCENE.minX + SCENE.widthM / 2,
+  z: SCENE.minZ + SCENE.depthM / 2
 } as const
 
 export const TRACK = {
@@ -48,7 +64,7 @@ export function laneToX(lane: number): number {
 
 export const RACE = {
   /** Total race distance, in meters. */
-  distanceM: 1000,
+  distanceM: 10000,
   /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
   /** Speed at the start, in m/s. */

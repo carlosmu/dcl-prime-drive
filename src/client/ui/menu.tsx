@@ -8,7 +8,7 @@ import { Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
 import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
-import { atlasIcon } from './atlas'
+import { LEVEL_ART_RATIO, atlasIcon, levelThumb } from './atlas'
 
 /** Menu panel is 940 wide with 32 of padding on each side: what a text line can use. */
 const CONTENT_WIDTH = 876
@@ -16,6 +16,23 @@ const CONTENT_WIDTH = 876
 /** Logo art, A7:H8 of the atlas: 8 cells wide by 2 tall, so always 4:1. */
 const LOGO_WIDTH = 444
 const LOGO_HEIGHT = LOGO_WIDTH / 4
+
+/**
+ * Tracks offered by the Race tab's selector, in the order of level_selector.png.
+ * Everything but the first one is art only: `playable` gates the RACE button.
+ */
+const LEVELS = [
+  { name: 'NEON CITY', playable: true },
+  { name: 'RED DESERT', playable: false }
+]
+
+/** Prev/next sit at the panel's edges; the art takes every pixel between them. */
+const LEVEL_NAV_WIDTH = 110
+const LEVEL_ART_WIDTH = CONTENT_WIDTH - 2 * LEVEL_NAV_WIDTH - 32
+/** Art is 2:1 (4x2 cells of the 8x8 sheet): the height follows the width. */
+const LEVEL_ART_HEIGHT = LEVEL_ART_WIDTH / LEVEL_ART_RATIO
+
+const isLevelPlayable = () => LEVELS[state.selectedLevel]?.playable === true
 
 const TRANSPARENT = Color4.create(0, 0, 0, 0)
 const RACE_BUTTON_COLOR = PRIMARY_COLOR
@@ -142,6 +159,9 @@ const Tab = (props: { id: typeof state.screen; label: string }) => {
 /** Atlas icon + label in the bitmap font. */
 const RaceButton = () => {
   const connecting = state.netStatus === 'connecting'
+  // A level that isn't built yet dims the button, so the art alone doesn't promise a race.
+  const locked = !isLevelPlayable()
+  const disabled = connecting || locked
   return (
     <UiEntity
       uiTransform={{
@@ -153,13 +173,20 @@ const RaceButton = () => {
         alignItems: 'center',
         borderRadius: 16
       }}
-      uiBackground={{ color: connecting ? COLORS.panelSoft : RACE_BUTTON_COLOR }}
+      uiBackground={{ color: disabled ? COLORS.panelSoft : RACE_BUTTON_COLOR }}
       onMouseDown={() => {
-        if (!connecting) startRace()
+        if (!disabled) startRace()
       }}
     >
-      <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 16 } }} uiBackground={atlasIcon(2, connecting ? 0 : 2)} />
-      <BitmapText text={connecting ? 'CONNECTING...' : 'RACE'} fontSize={40} color={Color4.White()} />
+      <UiEntity
+        uiTransform={{ width: 56, height: 56, margin: { right: 16 } }}
+        uiBackground={atlasIcon(2, disabled ? 0 : 2)}
+      />
+      <BitmapText
+        text={connecting ? 'CONNECTING...' : locked ? 'COMING SOON' : 'RACE'}
+        fontSize={40}
+        color={disabled ? COLORS.textDim : Color4.White()}
+      />
     </UiEntity>
   )
 }
@@ -238,10 +265,11 @@ const Home = () => (
           ? `Track record: ${formatTime(state.recordTimeMs)} - ${state.recordHolder}`
           : 'Nobody has completed the track yet. The first to finish leaves the ghost.'
       }
-      size={TEXT_SIZE.lg}
+      size={TEXT_SIZE.md}
       highlight={state.recordTimeMs > 0}
       color={COLORS.ghost}
       maxWidth={CONTENT_WIDTH}
+      lineHeight={1.5}
     />
     <Text
       value={
@@ -269,6 +297,8 @@ const Home = () => (
       />
     ) : null}
 
+    <LevelSelector />
+
     {/* Pushes the server status down, right above the RACE button. */}
     <UiEntity uiTransform={{ width: '100%', flexGrow: 1 }} />
     {/* Only worth saying when something is wrong: connected is the expected case. */}
@@ -278,9 +308,49 @@ const Home = () => (
   </UiEntity>
 )
 
+/** Thumbnail of the selected level, with prev/next on each side. */
+const LevelSelector = () => (
+  <UiEntity
+    uiTransform={{
+      width: '100%',
+      height: LEVEL_ART_HEIGHT + 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      margin: { top: 16 }
+    }}
+  >
+    <MenuButton label="PREV" fontSize={TEXT_SIZE.md} width={LEVEL_NAV_WIDTH} height={64} onDown={() => cycleLevel(-1)} />
+    <UiEntity
+      uiTransform={{
+        width: LEVEL_ART_WIDTH,
+        height: LEVEL_ART_HEIGHT,
+        flexDirection: 'column',
+        justifyContent: 'flex-start'
+      }}
+      uiBackground={levelThumb(state.selectedLevel)}
+    >
+      {/* Name over the art's top edge: white, so neither level reads as the highlighted one. */}
+      <Text
+        value={LEVELS[state.selectedLevel].name}
+        size={TEXT_SIZE.lg}
+        align="middle-center"
+        marginTop={0}
+        height={TEXT_SIZE.lg * 1.6}
+      />
+    </UiEntity>
+    <MenuButton label="NEXT" fontSize={TEXT_SIZE.md} width={LEVEL_NAV_WIDTH} height={64} onDown={() => cycleLevel(1)} />
+  </UiEntity>
+)
+
+/** Wraps around, so two levels feel like a carousel rather than a dead end. */
+function cycleLevel(step: number) {
+  state.selectedLevel = (state.selectedLevel + step + LEVELS.length) % LEVELS.length
+}
+
 function netStatusLine(): string {
   if (state.netStatus === 'connecting') return 'Looking for the race server...'
-  return "Server disconnected: you can race, but no progress will be saved - no coins, no records."
+  return 'Server disconnected: you can race, but no progress will be saved - no coins, no records.'
 }
 
 function netStatusColor() {

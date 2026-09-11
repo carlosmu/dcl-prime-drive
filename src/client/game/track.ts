@@ -1,6 +1,6 @@
 import { Entity, GltfContainer, Material, MeshRenderer, Transform, engine } from '@dcl/sdk/ecs'
 import { Color3, Color4, Quaternion, Vector3 } from '@dcl/sdk/math'
-import { SCENE, SPAWN, TRACK } from '../../shared/config'
+import { SCENE, SCENE_CENTER, SPAWN, TRACK } from '../../shared/config'
 
 /**
  * Track scenery: static road and scrolling elements.
@@ -105,12 +105,12 @@ export function scrollTrack(delta: number) {
 function buildGround() {
   const ground = engine.addEntity()
   Transform.create(ground, {
-    position: Vector3.create(SCENE.widthM / 2, TRACK.roadY - 0.02, SCENE.depthM / 2),
+    position: Vector3.create(SCENE_CENTER.x, TRACK.roadY - 0.02, SCENE_CENTER.z),
     scale: Vector3.create(SCENE.widthM, 0.08, SCENE.depthM)
   })
   MeshRenderer.setBox(ground)
   Material.setPbrMaterial(ground, {
-    albedoColor: Color4.create(0.03, 0.03, 0.05, 1),
+    albedoColor: Color4.create(0, 0, 0, 1),
     roughness: 1,
     metallic: 0
   })
