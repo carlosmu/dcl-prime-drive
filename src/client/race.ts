@@ -270,6 +270,10 @@ function endRun(completed: boolean) {
     reason: '',
     elapsedMs: state.elapsedMs,
     coinsAwarded: 0,
+    coinsPicked: 0,
+    finishBonus: 0,
+    recordBonus: 0,
+    livesBonus: 0,
     newRecord: false,
     // Without a server there's no verdict to wait for: the result is already final.
     pending: online,

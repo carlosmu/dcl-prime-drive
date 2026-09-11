@@ -158,6 +158,10 @@ function registerHandlers() {
       state.result.accepted = data.accepted
       state.result.reason = data.reason
       state.result.coinsAwarded = data.coinsAwarded
+      state.result.coinsPicked = data.coinsPicked
+      state.result.finishBonus = data.finishBonus
+      state.result.recordBonus = data.recordBonus
+      state.result.livesBonus = data.livesBonus
       state.result.newRecord = data.newRecord
     }
     state.coins = data.totalCoins

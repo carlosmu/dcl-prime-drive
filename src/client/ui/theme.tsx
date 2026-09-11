@@ -16,6 +16,61 @@ export const COLORS = {
   track: Color4.create(1, 1, 1, 0.12)
 }
 
+/**
+ * The three text sizes of the menus, by priority. The logo is the only thing
+ * bigger than `lg`.
+ */
+export const TEXT_SIZE = {
+  /** Headings and key numbers. */
+  lg: 32,
+  /** Main information. */
+  md: 24,
+  /** Secondary notes and status lines. */
+  sm: 18
+}
+
+const TRANSPARENT = Color4.create(0, 0, 0, 0)
+/** Fill of the main call to action (RACE, Buy, Race again). */
+export const PRIMARY_COLOR = Color4.create(0.98, 0.16, 0.33, 1)
+
+/**
+ * Button with its label in the bitmap font (React-ECS `Button` only draws the
+ * system font). `primary` is filled; the rest are outlined in white.
+ */
+export const MenuButton = (props: {
+  label: string
+  width: PositionUnit
+  height: number
+  primary?: boolean
+  disabled?: boolean
+  fontSize?: number
+  margin?: { top?: number; right?: number | `${number}%`; bottom?: number; left?: number }
+  onDown: () => void
+}) => (
+  <UiEntity
+    uiTransform={{
+      width: props.width,
+      height: props.height,
+      margin: props.margin,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: props.disabled ? COLORS.textDim : props.primary ? PRIMARY_COLOR : COLORS.text
+    }}
+    uiBackground={{ color: props.primary && !props.disabled ? PRIMARY_COLOR : TRANSPARENT }}
+    onMouseDown={() => {
+      if (!props.disabled) props.onDown()
+    }}
+  >
+    <BitmapText
+      text={props.label}
+      fontSize={props.fontSize ?? TEXT_SIZE.sm}
+      color={props.disabled ? COLORS.textDim : COLORS.text}
+    />
+  </UiEntity>
+)
+
 /** Corner radius shared by every panel. */
 export const PANEL_RADIUS = 24
 
@@ -54,6 +109,8 @@ export const Text = (props: {
   highlight?: boolean
   /** Word-wraps at this width in px. The height then grows with the lines. */
   maxWidth?: number
+  /** Row pitch as a multiple of the font size (e.g. 1.5). Also spaces wrapped lines. */
+  lineHeight?: number
 }) => {
   const align = props.align ?? 'middle-left'
   // COLORS.danger swaps to the pre-tinted red font so it also shows red on mobile.
@@ -77,6 +134,7 @@ export const Text = (props: {
         image={props.highlight ? PRIME_FONT_IMAGE_YELLOW : isDanger ? PRIME_FONT_IMAGE_RED : PRIME_FONT_IMAGE}
         color={props.highlight || isDanger ? Color4.White() : props.color ?? COLORS.text}
         maxWidth={props.maxWidth}
+        lineHeight={props.lineHeight}
         align={align === 'middle-center' ? 'center' : align === 'middle-right' ? 'right' : 'left'}
       />
     </UiEntity>

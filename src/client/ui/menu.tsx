@@ -1,14 +1,22 @@
-import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { RACE, SKINS, formatDistance, formatTime } from '../../shared/config'
 import { isOnline, state } from '../state'
 import { startRace } from '../race'
 import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
 import { Color4 } from '@dcl/sdk/math'
-import { COLORS, PANEL_RADIUS, Text } from './theme'
-import { BitmapText } from './bitmapFont'
+import { isMobile } from '@dcl/sdk/platform'
+import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
+import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
+import { atlasIcon } from './hud'
 
-/** Main menu: race, garage, and ranking. */
+/** Menu panel is 940 wide with 32 of padding on each side: what a text line can use. */
+const CONTENT_WIDTH = 876
+
+const TRANSPARENT = Color4.create(0, 0, 0, 0)
+const RACE_BUTTON_COLOR = PRIMARY_COLOR
+
+/** Main menu: race, garage, ranking, and tutorial. */
 export const Menu = () => (
   <UiEntity
     uiTransform={{
@@ -22,7 +30,7 @@ export const Menu = () => (
     <UiEntity
       uiTransform={{
         width: 940,
-        height: 700,
+        height: '80vh',
         flexDirection: 'column',
         padding: 32,
         borderRadius: PANEL_RADIUS
@@ -30,40 +38,37 @@ export const Menu = () => (
       uiBackground={{ color: COLORS.panel }}
     >
       <UiEntity uiTransform={{ width: '100%', height: 78, flexDirection: 'row', alignItems: 'center' }}>
-        <UiEntity uiTransform={{ width: '76%', height: '100%' }} onMouseDown={() => tapLogo()}>
+        <UiEntity uiTransform={{ flexGrow: 1, height: '100%' }} onMouseDown={() => tapLogo()}>
           <Text value="PRIME DRIVE" size={54} highlight />
         </UiEntity>
-        <Button
-          value={state.musicOn ? 'Music: on' : 'Music: off'}
-          variant="secondary"
-          fontSize={20}
-          onMouseDown={() => toggleMusic()}
-          uiTransform={{ width: '24%', height: 48 }}
+        <MenuButton
+          label={state.musicOn ? 'MUSIC: ON' : 'MUSIC: OFF'}
+          width={200}
+          height={48}
+          onDown={() => toggleMusic()}
         />
       </UiEntity>
-      <Text
-        value={`${formatDistance(RACE.distanceM)} - checkpoint every ${RACE.checkpointIntervalM} m - ${RACE.lives} lives`}
-        size={22}
-        color={COLORS.textDim}
-      />
 
       <UiEntity uiTransform={{ width: '100%', height: 56, flexDirection: 'row', margin: { top: 18 } }}>
         <Tab id="home" label="Race" />
         <Tab id="garage" label="Garage" />
         <Tab id="ranking" label="Ranking" />
         <Tab id="tutorial" label="Tutorial" />
-        <UiEntity uiTransform={{ flexGrow: 1, height: 52 }}>
-          <Text value={`${state.coins} coins`} size={28} align="middle-right" highlight />
-        </UiEntity>
       </UiEntity>
       <UiEntity uiTransform={{ width: '100%', height: 2 }} uiBackground={{ color: COLORS.text }} />
 
-      <UiEntity uiTransform={{ width: '100%', height: 440, flexDirection: 'column', margin: { top: 16 } }}>
+      {/* Takes whatever height is left; anything taller is clipped instead of spilling out. */}
+      <UiEntity
+        uiTransform={{ width: '100%', flexGrow: 1, flexDirection: 'column', margin: { top: 32 }, overflow: 'hidden' }}
+      >
         {state.screen === 'home' ? <Home /> : null}
         {state.screen === 'garage' ? <Garage /> : null}
         {state.screen === 'ranking' ? <Ranking /> : null}
         {state.screen === 'tutorial' ? <Tutorial /> : null}
       </UiEntity>
+
+      {/* On every tab, always in the same place: the one action the menu exists for. */}
+      <RaceButton />
     </UiEntity>
   </UiEntity>
 )
@@ -83,7 +88,7 @@ function tapLogo() {
   state.debugOn = true
 }
 
-/** Underlined tab: plain label, the active one gets the accent color and bar. */
+/** Folder tab: the active one gets a white border with rounded top corners. */
 const Tab = (props: { id: typeof state.screen; label: string }) => {
   const active = state.screen === props.id
   return (
@@ -95,7 +100,7 @@ const Tab = (props: { id: typeof state.screen; label: string }) => {
         margin: { right: 8 },
         // Inactive tabs keep the same (transparent) border so nothing shifts on switch.
         borderWidth: { top: 2, left: 2, right: 2, bottom: 0 },
-        borderColor: active ? COLORS.text : Color4.create(0, 0, 0, 0),
+        borderColor: active ? COLORS.text : TRANSPARENT,
         borderRadius: { topLeft: 12, topRight: 12 }
       }}
       onMouseDown={() => {
@@ -103,44 +108,105 @@ const Tab = (props: { id: typeof state.screen; label: string }) => {
       }}
     >
       <UiEntity uiTransform={{ height: 52, alignItems: 'center', padding: { left: 16, right: 16 } }}>
-        <BitmapText text={props.label.toUpperCase()} fontSize={24} color={active ? COLORS.text : COLORS.textDim} />
-      </UiEntity>    </UiEntity>
+        <BitmapText
+          text={props.label.toUpperCase()}
+          fontSize={TEXT_SIZE.md}
+          color={active ? COLORS.text : COLORS.textDim}
+        />
+      </UiEntity>
+    </UiEntity>
   )
 }
 
-/** How to play. Menu panel is 940 wide with 32 of padding on each side. */
+/** Speedometer icon (C1:D2 of the atlas) + label in the bitmap font. */
+const RaceButton = () => {
+  const connecting = state.netStatus === 'connecting'
+  return (
+    <UiEntity
+      uiTransform={{
+        width: '100%',
+        height: 86,
+        margin: { top: 16 },
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 16
+      }}
+      uiBackground={{ color: connecting ? COLORS.panelSoft : RACE_BUTTON_COLOR }}
+      onMouseDown={() => {
+        if (!connecting) startRace()
+      }}
+    >
+      <UiEntity uiTransform={{ width: 56, height: 56, margin: { right: 16 } }} uiBackground={atlasIcon(2, 0)} />
+      <BitmapText text={connecting ? 'CONNECTING...' : 'RACE'} fontSize={40} color={Color4.White()} />
+    </UiEntity>
+  )
+}
+
+/** How to play, plus the race's numbers. */
 const Tutorial = () => (
-  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
-    <Text value="HOW TO PLAY" size={30} highlight />
-    <Text
-      value="Change lanes with A / D or the arrow buttons."
-      size={22}
-      color={COLORS.textDim}
-      marginTop={16}
-      maxWidth={876}
-    />
-    <Text
-      value="Hold SPACE or the BOOST button to go faster."
-      size={22}
-      color={COLORS.textDim}
-      marginTop={10}
-      maxWidth={876}
-    />
-    <Text
-      value={`Dodge the obstacles, collect coins, and hold on for ${formatDistance(RACE.distanceM)}.`}
-      size={22}
-      color={COLORS.textDim}
-      marginTop={10}
-      maxWidth={876}
-    />
-    <Text
-      value={`You have ${RACE.lives} lives. Coins only count if you reach the finish line.`}
-      size={22}
-      color={COLORS.textDim}
-      marginTop={10}
-      maxWidth={876}
+  <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
+    {/* Touch controls on mobile, keyboard on desktop. The font has no em dash or arrows. */}
+    <ControlLine keys={isMobile() ? ['ARROWS'] : ['A', 'D']} action="Change lanes" first />
+    <ControlLine keys={isMobile() ? ['BOOST'] : ['SPACE']} action="Boost" />
+
+    <TutorialGap />
+    <TutorialLine value="Dodge obstacles & collect coins." />
+    <TutorialLine value="Reach the finish line!" />
+
+    <TutorialGap />
+    <Text value={`${RACE.lives} Lives per race`} size={TEXT_SIZE.md} color={COLORS.text} marginTop={12} />
+    <TutorialLine value="Coins only count if you finish." />
+  </UiEntity>
+)
+
+/** "[A] [D] - Change lanes": each key drawn as a keycap, the action in white. */
+const ControlLine = (props: { keys: string[]; action: string; first?: boolean }) => (
+  <UiEntity
+    uiTransform={{ width: '100%', flexDirection: 'row', alignItems: 'center', margin: { top: props.first ? 0 : 12 } }}
+  >
+    {props.keys.map((key) => (
+      <KeyCap key={key} label={key} />
+    ))}
+    <BitmapText
+      text={props.action}
+      fontSize={TEXT_SIZE.md}
+      color={COLORS.text}
+      lineHeight={1.5}
+      uiTransform={{ margin: { left: 8 } }}
     />
   </UiEntity>
+)
+
+/** A key (or on-screen button) name inside a rounded white outline. */
+const KeyCap = (props: { key?: string; label: string }) => (
+  <UiEntity
+    uiTransform={{
+      height: 44,
+      alignItems: 'center',
+      padding: { left: 14, right: 14 },
+      margin: { right: 8 },
+      borderWidth: 2,
+      borderColor: COLORS.text,
+      borderRadius: 8
+    }}
+  >
+    <BitmapText text={props.label} fontSize={TEXT_SIZE.md} image={PRIME_FONT_IMAGE_YELLOW} />
+  </UiEntity>
+)
+
+/** Space between the tutorial's blocks. */
+const TutorialGap = () => <UiEntity uiTransform={{ width: '100%', height: 20 }} />
+
+const TutorialLine = (props: { value: string }) => (
+  <Text
+    value={props.value}
+    size={TEXT_SIZE.md}
+    color={COLORS.text}
+    marginTop={12}
+    maxWidth={CONTENT_WIDTH}
+    lineHeight={1.5}
+  />
 )
 
 const Home = () => (
@@ -151,8 +217,10 @@ const Home = () => (
           ? `Track record: ${formatTime(state.recordTimeMs)} - ${state.recordHolder}`
           : 'Nobody has completed the track yet. The first to finish leaves the ghost.'
       }
-      size={24}
+      size={TEXT_SIZE.lg}
+      highlight={state.recordTimeMs > 0}
       color={COLORS.ghost}
+      maxWidth={CONTENT_WIDTH}
     />
     <Text
       value={
@@ -162,9 +230,10 @@ const Home = () => (
             }`
           : "You haven't completed a race yet."
       }
-      size={24}
-      color={COLORS.textDim}
-      marginTop={8}
+      size={TEXT_SIZE.md}
+      color={COLORS.text}
+      marginTop={12}
+      maxWidth={CONTENT_WIDTH}
     />
     {state.standings.length > 0 ? (
       <Text
@@ -172,26 +241,16 @@ const Home = () => (
           .slice(0, 3)
           .map((r) => `${r.name} ${formatDistance(r.distanceM)}`)
           .join('  |  ')}`}
-        size={22}
+        size={TEXT_SIZE.sm}
         color={COLORS.textDim}
         marginTop={8}
+        maxWidth={CONTENT_WIDTH}
       />
     ) : null}
 
-    <Button
-      value={state.netStatus === 'connecting' ? 'connecting...' : 'RACE'}
-      variant="primary"
-      fontSize={34}
-      disabled={state.netStatus === 'connecting'}
-      onMouseDown={() => {
-        if (state.netStatus !== 'connecting') startRace()
-      }}
-      uiTransform={{ width: '100%', height: 86, margin: { top: 16 } }}
-    />
-
-    {/* Pushes the server status down to the bottom edge of the menu panel. */}
+    {/* Pushes the server status down, right above the RACE button. */}
     <UiEntity uiTransform={{ width: '100%', flexGrow: 1 }} />
-    <Text value={netStatusLine()} size={20} color={netStatusColor()} maxWidth={876} />
+    <Text value={netStatusLine()} size={TEXT_SIZE.sm} color={netStatusColor()} maxWidth={CONTENT_WIDTH} />
   </UiEntity>
 )
 
@@ -208,7 +267,9 @@ function netStatusColor() {
 }
 
 const Garage = () => (
-  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
+  <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
+    <Text value={`${state.coins} coins`} size={TEXT_SIZE.lg} highlight />
+    <UiEntity uiTransform={{ width: '100%', height: 10 }} />
     {SKINS.map((skin) => {
       const owned = state.ownedSkins.includes(skin.id)
       const equipped = state.equippedSkin === skin.id
@@ -222,36 +283,31 @@ const Garage = () => (
             flexDirection: 'row',
             alignItems: 'center',
             padding: { left: 18, right: 18 },
-            margin: { bottom: 10 }
+            margin: { bottom: 10 },
+            borderRadius: 12
           }}
           uiBackground={{ color: equipped ? COLORS.accentDim : COLORS.panelSoft }}
         >
-          <Text value={skin.name} size={28} width="40%" />
+          <Text value={skin.name} size={TEXT_SIZE.md} width="40%" />
           <Text
             value={owned ? 'in your garage' : `${skin.price} coins`}
-            size={24}
+            size={TEXT_SIZE.sm}
             width="30%"
             color={owned ? COLORS.textDim : affordable ? COLORS.gold : COLORS.danger}
           />
-          <UiEntity uiTransform={{ width: '30%', height: 56 }}>
+          <UiEntity uiTransform={{ width: '30%', height: 56, justifyContent: 'center', alignItems: 'center' }}>
             {equipped ? (
-              <Text value="EQUIPPED" size={24} align="middle-center" color={COLORS.accent} />
+              <Text value="EQUIPPED" size={TEXT_SIZE.sm} align="middle-center" color={COLORS.accent} />
             ) : owned ? (
-              <Button
-                value="Equip"
-                variant="secondary"
-                fontSize={22}
-                onMouseDown={() => requestEquipSkin(skin.id)}
-                uiTransform={{ width: '100%', height: 56 }}
-              />
+              <MenuButton label="EQUIP" width="100%" height={56} onDown={() => requestEquipSkin(skin.id)} />
             ) : (
-              <Button
-                value="Buy"
-                variant="primary"
-                fontSize={22}
+              <MenuButton
+                label="BUY"
+                width="100%"
+                height={56}
+                primary
                 disabled={!affordable}
-                onMouseDown={() => requestBuySkin(skin.id)}
-                uiTransform={{ width: '100%', height: 56 }}
+                onDown={() => requestBuySkin(skin.id)}
               />
             )}
           </UiEntity>
@@ -264,17 +320,23 @@ const Garage = () => (
           ? 'Balance and purchases are handled by the server: the UI only shows what it confirms.'
           : "The garage needs the server: without it there's no balance to spend."
       }
-      size={20}
+      size={TEXT_SIZE.sm}
       color={isOnline() ? COLORS.textDim : COLORS.gold}
       marginTop={12}
+      maxWidth={CONTENT_WIDTH}
     />
   </UiEntity>
 )
 
 const Ranking = () => (
-  <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
+  <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
     {state.leaderboard.length === 0 ? (
-      <Text value="No times recorded on this track yet." size={24} color={COLORS.textDim} />
+      <Text
+        value="No times recorded on this track yet."
+        size={TEXT_SIZE.md}
+        color={COLORS.textDim}
+        maxWidth={CONTENT_WIDTH}
+      />
     ) : (
       state.leaderboard.map((entry, index) => (
         <UiEntity
@@ -285,13 +347,14 @@ const Ranking = () => (
             flexDirection: 'row',
             alignItems: 'center',
             padding: { left: 18, right: 18 },
-            margin: { bottom: 6 }
+            margin: { bottom: 6 },
+            borderRadius: 12
           }}
           uiBackground={{ color: index === 0 ? COLORS.accentDim : COLORS.panelSoft }}
         >
-          <Text value={`${index + 1}`} size={24} width="10%" color={COLORS.textDim} />
-          <Text value={entry.name} size={24} width="60%" />
-          <Text value={formatTime(entry.timeMs)} size={24} width="30%" align="middle-right" highlight />
+          <Text value={`${index + 1}`} size={TEXT_SIZE.sm} width="10%" color={COLORS.textDim} />
+          <Text value={entry.name} size={TEXT_SIZE.md} width="60%" />
+          <Text value={formatTime(entry.timeMs)} size={TEXT_SIZE.md} width="30%" align="middle-right" highlight />
         </UiEntity>
       ))
     )}

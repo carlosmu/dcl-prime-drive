@@ -88,6 +88,11 @@ export const Messages = {
     reason: Schemas.String,
     elapsedMs: Schemas.Int,
     coinsAwarded: Schemas.Int,
+    /** Breakdown of `coinsAwarded`, to show where each coin came from. */
+    coinsPicked: Schemas.Int,
+    finishBonus: Schemas.Int,
+    recordBonus: Schemas.Int,
+    livesBonus: Schemas.Int,
     newRecord: Schemas.Boolean,
     totalCoins: Schemas.Int
   }),

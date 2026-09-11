@@ -118,6 +118,8 @@ interface BitmapTextProps {
   // pre-splits `text` into lines that each fit, greedily by word. Long unbreakable words still
   // overflow one line as-is.
   maxWidth?: number
+  // Row pitch as a multiple of the font's line height (1 = tight). Also spaces wrapped lines.
+  lineHeight?: number
 }
 
 function measureLineWidth(line: string, font: BitmapFont, scale: number): number {
@@ -171,6 +173,8 @@ function BitmapTextLine(props: {
   const { line, font, image, scale, rowHeight, color } = props
   const chars = Array.from(line)
   const spaceAdvance = font.glyphs.get(32)?.xadvance ?? 0
+  // With a lineHeight > 1 the row is taller than the font: keep the ink centered in it.
+  const rowPad = (rowHeight - font.lineHeight * scale) / 2
 
   return (
     <UiEntity uiTransform={{ flexDirection: 'row', height: rowHeight, flexShrink: 0 }}>
@@ -198,7 +202,7 @@ function BitmapTextLine(props: {
             <UiEntity
               uiTransform={{
                 positionType: 'absolute',
-                position: { left: glyph.xoffset * scale, top: (glyph.yoffset + font.verticalOffset) * scale },
+                position: { left: glyph.xoffset * scale, top: (glyph.yoffset + font.verticalOffset) * scale + rowPad },
                 width: glyph.width * scale,
                 height: glyph.height * scale
               }}
@@ -224,10 +228,11 @@ export function BitmapText({
   color,
   uiTransform,
   align = 'left',
-  maxWidth
+  maxWidth,
+  lineHeight = 1
 }: BitmapTextProps) {
   const scale = fontSize / font.lineHeight
-  const rowHeight = font.lineHeight * scale
+  const rowHeight = font.lineHeight * scale * lineHeight
   const wrappedText = maxWidth !== undefined ? wrapText(text, font, scale, maxWidth) : text
   const lines = wrappedText.split('\n')
   const alignItems = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'

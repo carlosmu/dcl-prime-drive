@@ -159,7 +159,7 @@ const ATLAS = 'assets/images/atlas_01.png'
 const ATLAS_GRID = 8
 
 /** 2x2-cell icon from the 8x8 atlas; col/row are 0-based from the top-left (A1 = 0,0). */
-function atlasIcon(col: number, row: number, size = 2) {
+export function atlasIcon(col: number, row: number, size = 2) {
   const s = 1 / ATLAS_GRID
   const u0 = col * s
   const u1 = (col + size) * s

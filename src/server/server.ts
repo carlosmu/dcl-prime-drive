@@ -1,7 +1,7 @@
 import { PlayerIdentityData, Transform, engine } from '@dcl/sdk/ecs'
 import { syncEntity } from '@dcl/sdk/network'
 import { EnvVar } from '@dcl/sdk/server'
-import { CHECKPOINT_COUNT, ECONOMY, SKINS, TRACK_ID, findSkin, isCompleteGhost } from '../shared/config'
+import { CHECKPOINT_COUNT, ECONOMY, RACE, SKINS, TRACK_ID, findSkin, isCompleteGhost } from '../shared/config'
 import { room } from '../shared/messages'
 import { ServerHeartbeat, TrackRecord, protectServerEntity } from '../shared/schemas'
 import {
@@ -174,6 +174,10 @@ async function finishRace(address: string, report: FinishPayload) {
         reason: result.reason,
         elapsedMs: report.elapsedMs,
         coinsAwarded: 0,
+        coinsPicked: 0,
+        finishBonus: 0,
+        recordBonus: 0,
+        livesBonus: 0,
         newRecord: false,
         totalCoins: profile.coins
       },
@@ -184,8 +188,13 @@ async function finishRace(address: string, report: FinishPayload) {
 
   run.finished = true
 
-  // Coins picked up only pay out if the race is completed.
-  let awarded = report.completed ? Math.floor(report.coins * coinMultiplier) + ECONOMY.finishBonus : 0
+  // Nothing pays out unless the race is completed.
+  const coinsPicked = report.completed ? Math.floor(report.coins * coinMultiplier) : 0
+  const finishBonus = report.completed ? ECONOMY.finishBonus : 0
+  // The higher crash count wins: a client can't report fewer than its checkpoints confirmed.
+  const livesLeft = Math.max(0, RACE.lives - Math.max(report.crashes, run.crashes))
+  const livesBonus = report.completed ? livesLeft * ECONOMY.livesBonus : 0
+  let recordBonus = 0
 
   let newRecord = false
   if (report.completed) {
@@ -197,7 +206,7 @@ async function finishRace(address: string, report: FinishPayload) {
     const ghost = await loadGhost()
     if (isCompleteGhost(run.splits) && (!ghost || report.elapsedMs < ghost.totalMs)) {
       newRecord = true
-      awarded += ECONOMY.recordBonus
+      recordBonus = ECONOMY.recordBonus
       const nextGhost: GhostRecord = {
         address,
         name: run.name,
@@ -215,6 +224,7 @@ async function finishRace(address: string, report: FinishPayload) {
     room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) })
   }
 
+  const awarded = coinsPicked + finishBonus + recordBonus + livesBonus
   profile.coins += awarded
   profile.totalCoinsEarned += awarded
   await saveProfile(address, profile)
@@ -230,6 +240,10 @@ async function finishRace(address: string, report: FinishPayload) {
       reason: '',
       elapsedMs: report.elapsedMs,
       coinsAwarded: awarded,
+      coinsPicked,
+      finishBonus,
+      recordBonus,
+      livesBonus,
       newRecord,
       totalCoins: profile.coins
     },

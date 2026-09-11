@@ -11,7 +11,7 @@ import { state } from '../state'
  * drowned out on the track.
  */
 
-const MUSIC = 'assets/sounds/music.mp3'
+const MUSIC = 'assets/sounds/music_01.mp3'
 
 /** Volume in menu / results. */
 const IDLE_VOLUME = 0.22

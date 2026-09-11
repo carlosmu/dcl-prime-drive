@@ -1,9 +1,9 @@
-import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 import { abortRace, resumeRace } from '../race'
 import { state } from '../state'
 import { toggleMusic } from '../game/music'
-import { COLORS, PANEL_RADIUS, Text } from './theme'
+import { COLORS, MenuButton, PANEL_RADIUS, TEXT_SIZE, Text } from './theme'
 
 /** Pause overlay: dims the race and blocks the HUD controls underneath. */
 export const PauseMenu = () => (
@@ -29,26 +29,30 @@ export const PauseMenu = () => (
       uiBackground={{ color: COLORS.panel }}
     >
       <Text value="PAUSED" size={52} align="middle-center" highlight />
-      <Button
-        value="Resume"
-        variant="primary"
-        fontSize={28}
-        onMouseDown={() => resumeRace()}
-        uiTransform={{ width: '100%', height: 76, margin: { top: 24 } }}
+      <MenuButton
+        label="RESUME"
+        primary
+        fontSize={TEXT_SIZE.md}
+        width="100%"
+        height={76}
+        margin={{ top: 24 }}
+        onDown={() => resumeRace()}
       />
-      <Button
-        value={state.musicOn ? 'Music: on' : 'Music: off'}
-        variant="secondary"
-        fontSize={28}
-        onMouseDown={() => toggleMusic()}
-        uiTransform={{ width: '100%', height: 76, margin: { top: 16 } }}
+      <MenuButton
+        label={state.musicOn ? 'MUSIC: ON' : 'MUSIC: OFF'}
+        fontSize={TEXT_SIZE.md}
+        width="100%"
+        height={76}
+        margin={{ top: 16 }}
+        onDown={() => toggleMusic()}
       />
-      <Button
-        value="Quit"
-        variant="secondary"
-        fontSize={28}
-        onMouseDown={() => abortRace()}
-        uiTransform={{ width: '100%', height: 76, margin: { top: 16 } }}
+      <MenuButton
+        label="QUIT"
+        fontSize={TEXT_SIZE.md}
+        width="100%"
+        height={76}
+        margin={{ top: 16 }}
+        onDown={() => abortRace()}
       />
     </UiEntity>
   </UiEntity>

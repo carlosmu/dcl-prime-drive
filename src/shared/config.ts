@@ -113,10 +113,12 @@ export const CLOCK_DRIFT_TOLERANCE_MS = 8000
 export const ECONOMY = {
   /** Cap on coins the spawner can generate every 100 m. */
   maxCoinsPerCheckpoint: 14,
-  /** Bonus for completing the 10 km. */
-  finishBonus: 250,
+  /** Bonus for reaching the finish line. */
+  finishBonus: 100,
   /** Extra bonus for beating the track record. */
-  recordBonus: 500,
+  recordBonus: 200,
+  /** Paid per life left at the finish line: crashes don't subtract, surviving them clean pays. */
+  livesBonus: 25,
   /** Starting coins for a new wallet. */
   startingCoins: 0
 } as const

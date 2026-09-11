@@ -438,9 +438,12 @@
             "ageRating": "A",
             "categories": [],
             "author": "SDK",
-            "email": "",
             "tags": [],
             "layout": {
+              "base": {
+                "x": 0,
+                "y": 0
+              },
               "parcels": [
                 {
                   "x": 0,
@@ -762,14 +765,8 @@
                   "x": 3,
                   "y": 0
                 }
-              ],
-              "base": {
-                "x": 0,
-                "y": 0
-              }
+              ]
             },
-            "silenceVoiceChat": false,
-            "disablePortableExperiences": false,
             "spawnPoints": [
               {
                 "name": "start-line",
@@ -804,9 +801,9 @@
                 }
               }
             ],
-            "skyboxConfig": {},
-            "creator": "",
-            "disableNearbyVoiceChat": false,
+            "skyboxConfig": {
+              "fixedTime": 43200
+            },
             "hideLandscapeTerrain": true
           }
         }

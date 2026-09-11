@@ -88,7 +88,7 @@ Monitor `AudioSource` and `AudioStream` media state changes. Import from `@dcl/s
 import { engine, audioEventsSystem, AudioSource } from '@dcl/sdk/ecs'
 
 const radioEntity = engine.addEntity()
-AudioSource.create(radioEntity, { audioClipUrl: 'assets/Audio/music.mp3', playing: true })
+AudioSource.create(radioEntity, { audioClipUrl: 'assets/Audio/music_01.mp3', playing: true })
 
 audioEventsSystem.registerAudioEventsEntity(radioEntity, (event) => {
   // event is PBAudioEvent: { state: MediaState, timestamp: number }

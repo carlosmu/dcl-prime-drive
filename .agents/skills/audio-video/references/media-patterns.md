@@ -11,7 +11,7 @@ const speaker = engine.addEntity()
 Transform.create(speaker, { position: Vector3.create(8, 1, 8) })
 
 AudioSource.create(speaker, {
-  audioClipUrl: 'assets/Audio/music.mp3',
+  audioClipUrl: 'assets/Audio/music_01.mp3',
   playing: true,
   loop: true,
   volume: 0.5,
@@ -22,13 +22,13 @@ AudioSource.create(speaker, {
 ### Play/Stop/Toggle
 ```typescript
 // Prefer the helpers — they retrigger reliably and reset the cursor by default.
-AudioSource.playSound(speaker, 'assets/Audio/music.mp3') // play from 0
+AudioSource.playSound(speaker, 'assets/Audio/music_01.mp3') // play from 0
 AudioSource.stopSound(speaker)                            // stop, reset to 0
 
 // Toggle
 let playing = false
 playing = !playing
-if (playing) AudioSource.playSound(speaker, 'assets/Audio/music.mp3')
+if (playing) AudioSource.playSound(speaker, 'assets/Audio/music_01.mp3')
 else AudioSource.stopSound(speaker)
 ```
 
@@ -70,7 +70,7 @@ project/
 │   └── scene/
 │       └── Audio/
 │           ├── click.mp3
-│           ├── background-music.mp3
+│           ├── background-music_01.mp3
 │           └── explosion.ogg
 ├── src/
 │   └── index.ts
@@ -259,7 +259,7 @@ GltfNodeModifiers.create(myEntity, {
 ### Global (Non-Spatial) AudioSource
 ```typescript
 AudioSource.create(sourceEntity, {
-  audioClipUrl: 'assets/Audio/music.mp3',
+  audioClipUrl: 'assets/Audio/music_01.mp3',
   playing: true,
   global: true,
 })

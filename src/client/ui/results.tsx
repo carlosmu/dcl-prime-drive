@@ -1,8 +1,17 @@
-import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
+import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { RACE, formatDistance, formatTime } from '../../shared/config'
-import { state } from '../state'
+import { livesLeft, state } from '../state'
 import { backToMenu, startRace } from '../race'
-import { COLORS, PANEL_RADIUS, Text } from './theme'
+import { COLORS, MenuButton, PANEL_RADIUS, TEXT_SIZE, Text } from './theme'
+
+/** One row of the coin breakdown. Zero amounts (no record, no lives left) are skipped. */
+const BreakdownLine = (props: { label: string; amount: number }) =>
+  props.amount > 0 ? (
+    <UiEntity uiTransform={{ width: '100%', height: 28, flexDirection: 'row', margin: { top: 6 } }}>
+      <Text value={props.label} size={TEXT_SIZE.sm} width="70%" color={COLORS.textDim} />
+      <Text value={`+${props.amount}`} size={TEXT_SIZE.sm} width="30%" align="middle-right" />
+    </UiEntity>
+  ) : null
 
 /** End-of-race screen. Waits for the server's verdict. */
 export const Results = () => {
@@ -20,7 +29,7 @@ export const Results = () => {
       }}
     >
       <UiEntity
-        uiTransform={{ width: 760, height: 520, flexDirection: 'column', padding: 32, borderRadius: PANEL_RADIUS }}
+        uiTransform={{ width: 760, height: 650, flexDirection: 'column', padding: 32, borderRadius: PANEL_RADIUS }}
         uiBackground={{ color: COLORS.panel }}
       >
         <Text
@@ -41,7 +50,7 @@ export const Results = () => {
           marginTop={8}
         />
 
-        <UiEntity uiTransform={{ width: '100%', height: 120, flexDirection: 'column', margin: { top: 20 } }}>
+        <UiEntity uiTransform={{ width: '100%', height: 250, flexDirection: 'column', margin: { top: 20 } }}>
           {result.pending ? (
             <Text value="Validating with the server..." size={26} color={COLORS.textDim} />
           ) : result.offline ? (
@@ -68,8 +77,12 @@ export const Results = () => {
             </UiEntity>
           ) : result.accepted ? (
             <UiEntity uiTransform={{ width: '100%', height: '100%', flexDirection: 'column' }}>
-              <Text value={`+${result.coinsAwarded} coins credited`} size={30} highlight />
-              <Text value={`Balance: ${state.coins}`} size={24} color={COLORS.textDim} marginTop={6} />
+              <Text value={`+${result.coinsAwarded} coins credited`} size={TEXT_SIZE.lg} highlight />
+              <BreakdownLine label="Coins picked up" amount={result.coinsPicked} />
+              <BreakdownLine label="Finish bonus" amount={result.finishBonus} />
+              <BreakdownLine label={`Lives bonus (${livesLeft()} left)`} amount={result.livesBonus} />
+              <BreakdownLine label="Record bonus" amount={result.recordBonus} />
+              <Text value={`Balance: ${state.coins}`} size={TEXT_SIZE.sm} color={COLORS.textDim} marginTop={8} />
               {result.newRecord ? (
                 <Text value="New track record - your lap is the new ghost" size={24} color={COLORS.ghost} marginTop={6} />
               ) : null}
@@ -83,33 +96,28 @@ export const Results = () => {
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: 76, flexDirection: 'row', margin: { top: 20 } }}>
-          <Button
-            value="Race again"
-            variant="primary"
-            fontSize={26}
+          <MenuButton
+            label="RACE AGAIN"
+            primary
             disabled={result.pending}
-            onMouseDown={() => {
-              if (!result.pending) startRace()
-            }}
-            uiTransform={{ width: '32%', height: 76, margin: { right: '2%' } }}
+            fontSize={TEXT_SIZE.md}
+            width="32%"
+            height={76}
+            margin={{ right: '2%' }}
+            onDown={() => startRace()}
           />
-          <Button
-            value="Ranking"
-            variant="secondary"
-            fontSize={26}
-            onMouseDown={() => {
+          <MenuButton
+            label="RANKING"
+            fontSize={TEXT_SIZE.md}
+            width="32%"
+            height={76}
+            margin={{ right: '2%' }}
+            onDown={() => {
               backToMenu()
               state.screen = 'ranking'
             }}
-            uiTransform={{ width: '32%', height: 76, margin: { right: '2%' } }}
           />
-          <Button
-            value="Menu"
-            variant="secondary"
-            fontSize={26}
-            onMouseDown={() => backToMenu()}
-            uiTransform={{ width: '32%', height: 76 }}
-          />
+          <MenuButton label="MENU" fontSize={TEXT_SIZE.md} width="32%" height={76} onDown={() => backToMenu()} />
         </UiEntity>
       </UiEntity>
     </UiEntity>

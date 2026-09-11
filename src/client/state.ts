@@ -26,6 +26,11 @@ export type RaceResult = {
   reason: string
   elapsedMs: number
   coinsAwarded: number
+  /** Breakdown of `coinsAwarded`, as the server computed it. */
+  coinsPicked: number
+  finishBonus: number
+  recordBonus: number
+  livesBonus: number
   newRecord: boolean
   pending: boolean
   /** The race ran without a server: there was nothing to credit. */
