@@ -5,7 +5,7 @@ import { startRace } from '../race'
 import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
 import { Color4 } from '@dcl/sdk/math'
-import { COLORS, Text } from './theme'
+import { COLORS, PANEL_RADIUS, Text } from './theme'
 
 /** Main menu: race, garage, and ranking. */
 export const Menu = () => (
@@ -23,7 +23,8 @@ export const Menu = () => (
         width: 940,
         height: 700,
         flexDirection: 'column',
-        padding: 32
+        padding: 32,
+        borderRadius: PANEL_RADIUS
       }}
       uiBackground={{ color: COLORS.panel }}
     >

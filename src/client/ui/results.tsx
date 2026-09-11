@@ -2,7 +2,7 @@ import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
 import { RACE, formatDistance, formatTime } from '../../shared/config'
 import { state } from '../state'
 import { backToMenu, startRace } from '../race'
-import { COLORS, Text } from './theme'
+import { COLORS, PANEL_RADIUS, Text } from './theme'
 
 /** End-of-race screen. Waits for the server's verdict. */
 export const Results = () => {
@@ -20,7 +20,7 @@ export const Results = () => {
       }}
     >
       <UiEntity
-        uiTransform={{ width: 760, height: 520, flexDirection: 'column', padding: 32 }}
+        uiTransform={{ width: 760, height: 520, flexDirection: 'column', padding: 32, borderRadius: PANEL_RADIUS }}
         uiBackground={{ color: COLORS.panel }}
       >
         <Text

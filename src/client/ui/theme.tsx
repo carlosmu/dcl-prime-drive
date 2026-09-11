@@ -16,6 +16,9 @@ export const COLORS = {
   track: Color4.create(1, 1, 1, 0.12)
 }
 
+/** Corner radius shared by every panel. */
+export const PANEL_RADIUS = 24
+
 export const Panel = (props: {
   children?: ReactEcs.JSX.Element | (ReactEcs.JSX.Element | null)[] | null
   width: PositionUnit
@@ -27,7 +30,8 @@ export const Panel = (props: {
       width: props.width,
       height: props.height ?? 'auto',
       flexDirection: 'column',
-      padding: props.padding ?? 24
+      padding: props.padding ?? 24,
+      borderRadius: PANEL_RADIUS
     }}
     uiBackground={{ color: COLORS.panel }}
   >

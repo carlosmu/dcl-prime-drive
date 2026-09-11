@@ -3,7 +3,7 @@ import { Color4 } from '@dcl/sdk/math'
 import { abortRace, resumeRace } from '../race'
 import { state } from '../state'
 import { toggleMusic } from '../game/music'
-import { COLORS, Text } from './theme'
+import { COLORS, PANEL_RADIUS, Text } from './theme'
 
 /** Pause overlay: dims the race and blocks the HUD controls underneath. */
 export const PauseMenu = () => (
@@ -18,7 +18,14 @@ export const PauseMenu = () => (
     uiBackground={{ color: Color4.create(0, 0, 0, 0.55) }}
   >
     <UiEntity
-      uiTransform={{ width: 520, height: 432, flexDirection: 'column', alignItems: 'center', padding: 32 }}
+      uiTransform={{
+        width: 520,
+        height: 432,
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: 32,
+        borderRadius: PANEL_RADIUS
+      }}
       uiBackground={{ color: COLORS.panel }}
     >
       <Text value="PAUSED" size={52} align="middle-center" highlight />

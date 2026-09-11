@@ -4,7 +4,7 @@ import { DebugPanel } from './debug'
 import { Hud } from './hud'
 import { Menu } from './menu'
 import { Results } from './results'
-import { COLORS } from './theme'
+import { COLORS, PANEL_RADIUS } from './theme'
 
 export function setupUi() {
   // screenInset: 'none' keeps the UI on the whole screen. The SDK defaults to
@@ -33,8 +33,10 @@ const Toast = () => (
       width: 760,
       height: 56,
       positionType: 'absolute',
-      position: { bottom: 220, left: '50%' },
-      margin: { left: -380 }
+      // Flush with the bottom edge, between the lane buttons and BOOST.
+      position: { bottom: 0, left: '50%' },
+      margin: { left: -380 },
+      borderRadius: { topLeft: PANEL_RADIUS, topRight: PANEL_RADIUS }
     }}
     uiBackground={{ color: COLORS.panel }}
     uiText={{ value: state.toast, fontSize: 26, color: COLORS.text, textAlign: 'middle-center' }}
