@@ -433,12 +433,19 @@
         "0": {
           "json": {
             "name": "Prime Drive",
-            "description": "Carrera de 3 carriles a 10 km con checkpoints, ghost del record y garage de motos.",
+            "description": "Hit 10 km of neon highway at 220 km/h. Three lanes, three lives, one line through the traffic.\nChase the ghost of the fastest rider alive and take their name off the leaderboard.\nEvery coin you grab buys your next bike. How far can you push it?",
             "thumbnail": "assets/images/thumbnail.png",
             "ageRating": "A",
-            "categories": [],
-            "author": "SDK",
-            "tags": [],
+            "categories": [
+              "game",
+              "music",
+              "sports"
+            ],
+            "author": "carlosmu",
+            "email": "carlos.damian.munoz@gmail.com",
+            "tags": [
+              ""
+            ],
             "layout": {
               "base": {
                 "x": 16,
@@ -4478,6 +4485,10 @@
                   "y": 0
                 },
                 {
+                  "x": 16,
+                  "y": 0
+                },
+                {
                   "x": 17,
                   "y": 0
                 },
@@ -4539,6 +4550,7 @@
                 }
               ]
             },
+            "disablePortableExperiences": true,
             "spawnPoints": [
               {
                 "name": "start-line",
@@ -4552,11 +4564,8 @@
                     ]
                   },
                   "y": {
-                    "$case": "range",
-                    "value": [
-                      0,
-                      0
-                    ]
+                    "$case": "single",
+                    "value": 0
                   },
                   "z": {
                     "$case": "range",
@@ -4576,7 +4585,7 @@
             "skyboxConfig": {
               "fixedTime": 43200
             },
-            "hideLandscapeTerrain": true
+            "creator": "0x4B538E1E044922aec2F428EC7E17A99f44205fF9"
           }
         }
       }

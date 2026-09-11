@@ -274,7 +274,7 @@ const Home = () => (
       value={
         state.recordTimeMs > 0
           ? `Track record: ${formatTime(state.recordTimeMs)} - ${state.recordHolder}`
-          : 'Nobody has completed the track yet. The first to finish leaves the ghost.'
+          : 'Nobody has completed the track yet.'
       }
       size={TEXT_SIZE.md}
       highlight={state.recordTimeMs > 0}

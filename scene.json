@@ -3,17 +3,21 @@
   "runtimeVersion": "7",
   "display": {
     "title": "Prime Drive",
-    "description": "Carrera de 3 carriles a 10 km con checkpoints, ghost del record y garage de motos.",
+    "description": "Hit 10 km of neon highway at 220 km/h. Three lanes, three lives, one line through the traffic.\nChase the ghost of the fastest rider alive and take their name off the leaderboard.\nEvery coin you grab buys your next bike. How far can you push it?",
     "favicon": "favicon_asset",
     "navmapThumbnail": "assets/images/thumbnail.png"
   },
   "owner": "",
   "contact": {
-    "name": "SDK",
-    "email": ""
+    "name": "carlosmu",
+    "email": "carlos.damian.munoz@gmail.com"
   },
   "main": "bin/index.js",
-  "tags": [],
+  "tags": [
+    "game",
+    "music",
+    "sports"
+  ],
   "scene": {
     "parcels": [
       "0,31",
@@ -1024,6 +1028,7 @@
       "13,0",
       "14,0",
       "15,0",
+      "16,0",
       "17,0",
       "18,0",
       "19,0",
@@ -1073,14 +1078,14 @@
   ],
   "featureToggles": {
     "voiceChat": "enabled",
-    "portableExperiences": "enabled",
+    "portableExperiences": "disabled",
     "nearbyVoiceChat": "enabled"
   },
-  "creator": "",
+  "creator": "0x4B538E1E044922aec2F428EC7E17A99f44205fF9",
   "skyboxConfig": {
     "fixedTime": 43200
   },
-  "landscapeTerrain": false,
+  "landscapeTerrain": true,
   "source": {
     "origin": "creator-hub",
     "projectId": "fe7c5d2f-30db-4359-8dec-d0e268c6d037"

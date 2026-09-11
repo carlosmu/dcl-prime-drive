@@ -18,7 +18,7 @@ const CONE_MODEL = 'assets/models/obstacle_cone.glb'
 const ARCH_MODEL = 'assets/models/obstacle_gate.glb'
 
 const COIN_SFX = 'assets/sounds/coin.mp3'
-const CRASH_SFX = 'assets/sounds/losetrumpet.mp3'
+const CRASH_SFX = 'assets/sounds/lose_a_chance.mp3'
 const WIN_SFX = 'assets/sounds/won.mp3'
 /** Length of WIN_SFX: the background track stays silent for exactly that long. */
 const WIN_SFX_SECONDS = 9
