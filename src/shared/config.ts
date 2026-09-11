@@ -222,7 +222,7 @@ export const SKINS: SkinDef[] = [
     id: 'volt',
     name: 'Volt',
     model: BIKE_MODEL,
-    price: 1500,
+    price: 10000,
     ...BIKE_CLIPS,
     tint: { r: 0.6, g: 1, b: 0.35 }
   },
@@ -230,7 +230,7 @@ export const SKINS: SkinDef[] = [
     id: 'crimson',
     name: 'Crimson',
     model: BIKE_MODEL,
-    price: 4000,
+    price: 20000,
     ...BIKE_CLIPS,
     tint: { r: 1, g: 0.35, b: 0.35 }
   },
@@ -238,7 +238,7 @@ export const SKINS: SkinDef[] = [
     id: 'obsidian',
     name: 'Obsidian Strike',
     model: BIKE_MODEL,
-    price: 9000,
+    price: 30000,
     ...BIKE_CLIPS,
     tint: { r: 1, g: 0.82, b: 0.3 }
   }
