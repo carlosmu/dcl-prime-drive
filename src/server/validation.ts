@@ -25,6 +25,25 @@ export type RunState = {
   invalidated: boolean
   invalidReason: string
   finished: boolean
+  /** Server clock when the current pause began (0 = not paused). */
+  pausedAtMs: number
+  /** Total ms spent in already-closed pauses. */
+  pausedTotalMs: number
+}
+
+/** Race time according to the server: wall clock since the start, minus pauses. */
+export function activeElapsedMs(run: RunState, nowMs: number): number {
+  const openPause = run.pausedAtMs > 0 ? nowMs - run.pausedAtMs : 0
+  return nowMs - run.startedAtMs - run.pausedTotalMs - openPause
+}
+
+export function setPaused(run: RunState, paused: boolean, nowMs: number) {
+  if (paused && run.pausedAtMs === 0) {
+    run.pausedAtMs = nowMs
+  } else if (!paused && run.pausedAtMs > 0) {
+    run.pausedTotalMs += nowMs - run.pausedAtMs
+    run.pausedAtMs = 0
+  }
 }
 
 export function createRun(address: string, name: string, skinId: string, nowMs: number): RunState {
@@ -40,7 +59,9 @@ export function createRun(address: string, name: string, skinId: string, nowMs: 
     crashes: 0,
     invalidated: false,
     invalidReason: '',
-    finished: false
+    finished: false,
+    pausedAtMs: 0,
+    pausedTotalMs: 0
   }
 }
 
@@ -83,7 +104,7 @@ export function validateCheckpoint(run: RunState, report: CheckpointReport, nowM
   }
 
   // The client's clock can't run faster than the server's.
-  const serverElapsed = nowMs - run.startedAtMs
+  const serverElapsed = activeElapsedMs(run, nowMs)
   if (report.elapsedMs > serverElapsed + CLOCK_DRIFT_TOLERANCE_MS) {
     return reject('client clock ahead')
   }
@@ -125,7 +146,7 @@ export function validateFinish(run: RunState, report: FinishReport, nowMs: numbe
   if (report.coins < run.coins) return reject('coin counter went backwards')
   if (report.coins > maxCoinsAt(report.distanceM)) return reject('more coins than the track can generate')
 
-  const serverElapsed = nowMs - run.startedAtMs
+  const serverElapsed = activeElapsedMs(run, nowMs)
   if (Math.abs(serverElapsed - report.elapsedMs) > CLOCK_DRIFT_TOLERANCE_MS) {
     return reject('client clock out of sync')
   }

@@ -36,6 +36,10 @@ export const Messages = {
     coins: Schemas.Int,
     crashes: Schemas.Int
   }),
+  /** Pause menu opened/closed. The server stops counting race time while paused. */
+  racePause: Schemas.Map({
+    paused: Schemas.Boolean
+  }),
   /** The player left the scene or restarted without finishing. */
   raceAbort: Schemas.Map({
     reason: Schemas.String

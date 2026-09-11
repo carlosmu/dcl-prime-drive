@@ -198,6 +198,11 @@ export function sendRaceFinish(completed: boolean) {
   })
 }
 
+export function sendRacePause(paused: boolean) {
+  if (!isOnline()) return
+  room.send('racePause', { paused })
+}
+
 export function sendRaceAbort(reason: string) {
   if (!isOnline()) return
   room.send('raceAbort', { reason })

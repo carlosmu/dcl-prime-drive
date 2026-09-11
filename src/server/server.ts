@@ -18,7 +18,9 @@ import {
   RunState,
   applyCheckpoint,
   confirmedDistanceM,
+  activeElapsedMs,
   createRun,
+  setPaused,
   validateCheckpoint,
   validateFinish
 } from './validation'
@@ -119,6 +121,13 @@ function registerHandlers() {
   room.onMessage('raceFinish', (data, context) => {
     if (!context) return
     void finishRace(context.from, data)
+  })
+
+  room.onMessage('racePause', (data, context) => {
+    if (!context) return
+    const run = runs.get(context.from)
+    if (!run) return
+    setPaused(run, data.paused, Date.now())
   })
 
   room.onMessage('raceAbort', (data, context) => {
@@ -361,7 +370,7 @@ function broadcastStandings() {
       address: run.address,
       name: run.name,
       distanceM: confirmedDistanceM(run),
-      elapsedMs: now - run.startedAtMs,
+      elapsedMs: activeElapsedMs(run, now),
       finished: run.finished
     })
   }

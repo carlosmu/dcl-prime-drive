@@ -20,7 +20,7 @@ import { hideGhost, updateGhost } from './game/ghost'
 import { updateMusic } from './game/music'
 import { playWinSfx, prefillSpawner, resetSpawner, updateSpawner } from './game/spawner'
 import { scrollTrack, setWorldOffset } from './game/track'
-import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRaceStart } from './net'
+import { sendCheckpoint, sendRaceAbort, sendRaceFinish, sendRacePause, sendRaceStart } from './net'
 
 /**
  * Race loop.
@@ -203,9 +203,25 @@ export function abortRace() {
   }
   if (state.phase !== 'racing') return
   sendRaceAbort('quit')
+  state.paused = false
   state.phase = 'menu'
   playIdle()
   hideGhost()
+}
+
+/** Freezes the race and tells the server to stop its clock too. */
+export function pauseRace() {
+  if (state.phase !== 'racing' || state.paused) return
+  state.paused = true
+  state.boosting = false
+  uiBoost = false
+  sendRacePause(true)
+}
+
+export function resumeRace() {
+  if (!state.paused) return
+  state.paused = false
+  sendRacePause(false)
 }
 
 export function backToMenu() {
@@ -294,6 +310,8 @@ function raceSystem(dt: number) {
     updateCamera(dt, getBikeX())
     return
   }
+
+  if (state.paused) return
 
   readLaneInput(dt)
   readBoostInput()

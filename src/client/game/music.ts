@@ -56,8 +56,10 @@ function musicTarget(): number {
 
 /**
  * Mutes without stopping playback: `playing = false` doesn't guarantee
- * resuming where it left off, and a hard cut mid-track is noticeable.
+ * resuming where it left off. The toggle is instant; only phase changes fade.
  */
 export function toggleMusic() {
   state.musicOn = !state.musicOn
+  volume = musicTarget()
+  AudioSource.getMutable(entity).volume = volume
 }

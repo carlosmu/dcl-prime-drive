@@ -1,8 +1,9 @@
 import ReactEcs, { Button, UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
-import { RACE, formatDistance, formatTime } from '../../shared/config'
+import { RACE, formatTime } from '../../shared/config'
 import { livesLeft, state } from '../state'
-import { abortRace, boostAmount, changeLane, setBoost } from '../race'
+import { boostAmount, changeLane, pauseRace, setBoost } from '../race'
+import { PauseMenu } from './pause'
 import { COLORS, ProgressBar, Text } from './theme'
 
 /** Race HUD: time, coins, lives, and comparison with rivals. */
@@ -24,37 +25,30 @@ export const Hud = () => {
       {/* Top bar */}
       <UiEntity
         uiTransform={{
-          width: '40%',
-          height: 132,
+          width: '50%',
+          height: 142,
           positionType: 'absolute',
-          position: { top: 24, left: '30%' },
+          position: { top: 24, left: '25%' },
           flexDirection: 'column',
           padding: { left: 24, right: 24, top: 12, bottom: 12 }
         }}
         uiBackground={{ color: COLORS.panel }}
       >
-        <UiEntity uiTransform={{ width: '100%', height: 46, flexDirection: 'row' }}>
-          <Text value={formatTime(state.elapsedMs)} size={38} width="24%" />
-          <Text
-            value={`${formatDistance(state.distanceM)} / ${formatDistance(RACE.distanceM)}`}
-            size={30}
-            width="34%"
-            align="middle-center"
-            color={COLORS.textDim}
-          />
-          <Text
-            value={`${Math.round(state.speed * 3.6)} km/h${boost > 0.05 ? '  >>' : ''}`}
-            size={30}
-            width="21%"
-            align="middle-center"
+        <UiEntity
+          uiTransform={{ width: '100%', height: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <HudStat icon={[0, 0]} label="TIME" value={formatTime(state.elapsedMs)} />
+          <HudStat
+            icon={[2, 0]}
+            label="KM/H"
+            value={`${Math.round(state.speed * 3.6)}`}
             color={boost > 0.05 ? COLORS.gold : COLORS.accent}
           />
-          <Text
-            value={`${state.runCoins} coins`}
-            size={30}
-            width="21%"
-            align="middle-right"
-            color={COLORS.gold}
+          <HudStat icon={[4, 0]} label="COINS" value={`${state.runCoins}`} color={COLORS.gold} />
+          <UiEntity
+            uiTransform={{ width: 52, height: 52 }}
+            uiBackground={atlasIcon(6, 0)}
+            onMouseDown={() => pauseRace()}
           />
         </UiEntity>
 
@@ -177,22 +171,37 @@ export const Hud = () => {
         }}
       />
 
-      <Button
-        value="Quit"
-        variant="secondary"
-        fontSize={22}
-        onMouseDown={() => abortRace()}
-        uiTransform={{
-          width: 160,
-          height: 56,
-          positionType: 'absolute',
-          position: { top: 62, left: '70%' },
-          margin: { left: 16 }
-        }}
-      />
+      {state.paused ? <PauseMenu /> : null}
     </UiEntity>
   )
 }
+
+const ATLAS = 'assets/images/atlas_01.png'
+const ATLAS_GRID = 8
+
+/** 2x2-cell icon from the 8x8 atlas; col/row are 0-based from the top-left (A1 = 0,0). */
+function atlasIcon(col: number, row: number, size = 2) {
+  const s = 1 / ATLAS_GRID
+  const u0 = col * s
+  const u1 = (col + size) * s
+  const v1 = 1 - row * s
+  const v0 = 1 - (row + size) * s
+  return {
+    textureMode: 'stretch' as const,
+    texture: { src: ATLAS },
+    uvs: [u0, v0, u0, v1, u1, v1, u1, v0]
+  }
+}
+
+const HudStat = (props: { icon: [number, number]; label: string; value: string; color?: Color4 }) => (
+  <UiEntity uiTransform={{ height: '100%', flexDirection: 'row', alignItems: 'center' }}>
+    <UiEntity uiTransform={{ width: 52, height: 52, margin: { right: 8 } }} uiBackground={atlasIcon(...props.icon)} />
+    <UiEntity uiTransform={{ width: 130, height: '100%', flexDirection: 'column', justifyContent: 'center' }}>
+      <Text value={props.label} size={16} height={20} color={COLORS.textDim} />
+      <Text value={props.value} size={28} height={32} color={props.color ?? COLORS.text} />
+    </UiEntity>
+  </UiEntity>
+)
 
 function ghostLine(): string {
   if (!state.ghostAvailable || state.ghostSplits.length === 0) return 'no ghost yet'

@@ -69,6 +69,8 @@ export const state = {
   /** The spacebar (or the HUD button) is held down right now. */
   boosting: false,
   countdown: 0,
+  /** Pause menu open: the race simulation is frozen. */
+  paused: false,
   invulnerableFor: 0,
   lastCheckpointSent: 0,
   /** Seconds left waiting for the server's verdict after the finish line. */
@@ -133,6 +135,7 @@ export function resetRunState() {
   state.elapsedMs = 0
   state.lane = 1
   state.boosting = false
+  state.paused = false
   state.invulnerableFor = 0
   state.lastCheckpointSent = 0
   state.resultWaitFor = 0
