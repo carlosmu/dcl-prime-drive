@@ -152,6 +152,22 @@ export function validateFinish(run: RunState, report: FinishReport, nowMs: numbe
   }
 
   if (report.completed) {
+    // The client sends the last checkpoint and the finish in the same frame, so
+    // the finish can be handled first and leave the run one checkpoint short.
+    // Close that checkpoint here with the finish's own numbers: it goes through
+    // the same validation as any other, so nothing is taken on trust.
+    if (run.lastCheckpoint === CHECKPOINT_COUNT - 1) {
+      const finalCheckpoint: CheckpointReport = {
+        index: CHECKPOINT_COUNT,
+        elapsedMs: report.elapsedMs,
+        coins: report.coins,
+        crashes: report.crashes
+      }
+      const checkpointResult = validateCheckpoint(run, finalCheckpoint, nowMs)
+      if (!checkpointResult.ok) return checkpointResult
+      applyCheckpoint(run, finalCheckpoint)
+    }
+
     if (run.lastCheckpoint < CHECKPOINT_COUNT) {
       return reject(`finish reported with ${run.lastCheckpoint}/${CHECKPOINT_COUNT} checkpoints`)
     }
