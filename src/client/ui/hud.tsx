@@ -71,12 +71,18 @@ export const Hud = () => {
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: 34, flexDirection: 'row', margin: { top: 6 } }}>
-          <Text
-            value={`Lives ${'#'.repeat(livesLeft())}${'.'.repeat(RACE.lives - livesLeft())}`}
-            size={22}
-            width="30%"
-            color={livesLeft() > 1 ? COLORS.text : COLORS.danger}
-          />
+          <UiEntity uiTransform={{ width: '30%', height: '100%', flexDirection: 'row', alignItems: 'center' }}>
+            <Text value="Lives" size={22} width={64} color={livesLeft() > 1 ? COLORS.text : COLORS.danger} />
+            <UiEntity uiTransform={{ width: 8 }} />
+            {/* One heart (atlas A3:B4) per life left. Lost ones aren't drawn dimmed: mobile ignores the tint. */}
+            {Array.from({ length: livesLeft() }, (_, index) => (
+              <UiEntity
+                key={`life-${index}`}
+                uiTransform={{ width: LIFE_ICON, height: LIFE_ICON, margin: { left: 4 } }}
+                uiBackground={atlasIcon(0, 2)}
+              />
+            ))}
+          </UiEntity>
           <Text value={ghostLine()} size={22} width="40%" align="middle-center" color={COLORS.ghost} />
           <Text
             value={state.standings.length > 0 ? `${state.standings.length} racing` : 'solo run'}
@@ -198,6 +204,9 @@ const PedalButtons = (props: { boosting: boolean }) => (
     />
   </UiEntity>
 )
+
+/** Size of each heart in the lives row. */
+const LIFE_ICON = 24
 
 /** Progress bar thickness. */
 const BAR_HEIGHT = 13.5

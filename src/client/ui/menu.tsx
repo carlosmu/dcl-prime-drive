@@ -6,15 +6,16 @@ import { requestBuySkin, requestEquipSkin } from '../net'
 import { toggleMusic } from '../game/music'
 import { Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
-import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
+import { COLORS, MenuButton, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
 import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 import { LEVEL_ART_RATIO, atlasIcon, levelThumb } from './atlas'
 import { KeyboardGuide } from './keyboardGuide'
 
 const PANEL_PADDING = 32
 /**
- * Panel size. On mobile it fills the height and takes 40% of the width; on
- * desktop it's a fixed 940-wide card.
+ * Size of the menu's content column, centered over the full-screen backdrop.
+ * On mobile it fills the height and takes half the width; on desktop it's a
+ * fixed 940-wide column.
  */
 const PANEL_WIDTH = isMobile() ? '50%' : 940
 const PANEL_HEIGHT = isMobile() ? '100%' : '80vh'
@@ -58,16 +59,16 @@ export const Menu = () => (
       justifyContent: 'center',
       alignItems: 'center'
     }}
+    // The backdrop covers the whole screen; the content keeps its column width, centered.
+    uiBackground={{ color: COLORS.panel }}
   >
     <UiEntity
       uiTransform={{
         width: PANEL_WIDTH,
         height: PANEL_HEIGHT,
         flexDirection: 'column',
-        padding: PANEL_PADDING,
-        borderRadius: PANEL_RADIUS
+        padding: PANEL_PADDING
       }}
-      uiBackground={{ color: COLORS.panel }}
     >
       <UiEntity
         uiTransform={{
