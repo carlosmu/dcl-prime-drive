@@ -22,6 +22,8 @@ export type LeaderboardEntry = {
   address: string
   name: string
   timeMs: number
+  /** Splits of that time, to replay it as a ghost. Missing on rows saved before ghosts were kept per row. */
+  splits?: number[]
 }
 
 const PROFILE_KEY = 'profile'
@@ -150,6 +152,7 @@ export async function submitLeaderboardTime(entry: LeaderboardEntry): Promise<Le
     if (entry.timeMs >= existing.timeMs) return board
     existing.timeMs = entry.timeMs
     existing.name = entry.name
+    existing.splits = entry.splits
   } else {
     board.push({ ...entry })
   }
@@ -161,4 +164,24 @@ export async function submitLeaderboardTime(entry: LeaderboardEntry): Promise<Le
     console.log('[Server] could not save leaderboard:', error)
   }
   return leaderboardCache
+}
+
+/**
+ * Leaderboard rows that can be replayed, fastest first. A row saved without
+ * splits borrows the track record's when it's that same run.
+ */
+export async function loadGhosts(): Promise<GhostRecord[]> {
+  const board = await loadLeaderboard()
+  const record = await loadGhost()
+  const ghosts: GhostRecord[] = []
+  for (const entry of board) {
+    let splits = entry.splits
+    if (!splits && record && record.address === entry.address && record.totalMs === entry.timeMs) {
+      splits = record.splits
+    }
+    if (splits && isCompleteGhost(splits)) {
+      ghosts.push({ address: entry.address, name: entry.name, totalMs: entry.timeMs, splits })
+    }
+  }
+  return ghosts
 }

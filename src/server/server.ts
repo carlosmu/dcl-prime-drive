@@ -7,6 +7,7 @@ import { ServerHeartbeat, TrackRecord, protectServerEntity } from '../shared/sch
 import {
   GhostRecord,
   loadGhost,
+  loadGhosts,
   loadLeaderboard,
   loadProfile,
   peekProfile,
@@ -85,7 +86,7 @@ function registerHandlers() {
     const address = context.from
     names.set(address, sanitizeName(data.displayName, address))
     void sendProfile(address)
-    void sendGhost(address)
+    void sendGhosts(address)
     void sendLeaderboard(address)
   })
 
@@ -217,11 +218,16 @@ async function finishRace(address: string, report: FinishPayload) {
       const record = TrackRecord.getMutable(recordEntity)
       record.holderName = nextGhost.name
       record.timeMs = nextGhost.totalMs
-      broadcastGhost(nextGhost)
     }
 
-    const board = await submitLeaderboardTime({ address, name: run.name, timeMs: report.elapsedMs })
+    const board = await submitLeaderboardTime({
+      address,
+      name: run.name,
+      timeMs: report.elapsedMs,
+      splits: isCompleteGhost(run.splits) ? run.splits.slice() : undefined
+    })
     room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) })
+    void sendGhosts()
   }
 
   const awarded = coinsPicked + finishBonus + recordBonus + livesBonus
@@ -313,31 +319,14 @@ async function sendProfile(address: string) {
   )
 }
 
-async function sendGhost(address: string) {
-  const ghost = await loadGhost()
-  room.send(
-    'ghostSync',
-    ghost
-      ? {
-          available: true,
-          ownerName: ghost.name,
-          ownerAddress: ghost.address,
-          totalMs: ghost.totalMs,
-          splits: ghost.splits
-        }
-      : { available: false, ownerName: '', ownerAddress: '', totalMs: 0, splits: [] },
-    { to: [address] }
-  )
-}
-
-function broadcastGhost(ghost: GhostRecord) {
-  room.send('ghostSync', {
-    available: true,
-    ownerName: ghost.name,
-    ownerAddress: ghost.address,
-    totalMs: ghost.totalMs,
-    splits: ghost.splits
-  })
+/** The leaderboard's ghosts, to one player or (without an address) to everyone. */
+async function sendGhosts(address?: string) {
+  const ghosts = await loadGhosts()
+  const payload = {
+    ghosts: ghosts.map((g) => ({ name: g.name, address: g.address, totalMs: g.totalMs, splits: g.splits }))
+  }
+  if (address) room.send('ghostsSync', payload, { to: [address] })
+  else room.send('ghostsSync', payload)
 }
 
 async function sendLeaderboard(address: string) {

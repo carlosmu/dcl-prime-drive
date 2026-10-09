@@ -16,40 +16,56 @@ import { BIKE_YAW_DEG } from './bike'
 import { getWorldRoot } from './track'
 
 /**
- * Track record ghost.
+ * Leaderboard ghosts, one bike per replayable time.
  *
- * The server sends the splits of the best time (ms at each 100 m checkpoint).
- * The client interpolates them to know what meter the record was at at this
- * same moment of the race, and places the ghost bike ahead or behind
+ * The server sends the splits of each leaderboard time (ms at each 100 m
+ * checkpoint). The client interpolates them to know what meter each run was
+ * at at this same moment of the race, and places its bike ahead or behind
  * depending on the gap with the player. It's a clock, not a simulation: the
- * ghost doesn't dodge anything or collect coins.
+ * ghosts don't dodge anything or collect coins.
  *
- * Its lane isn't part of the record either, so it's chosen to stay out of
- * the player's way: always the lane farthest from theirs, which keeps the two
- * bikes from overlapping when they ride side by side.
+ * Their lanes aren't part of the runs either, so they're chosen to stay out
+ * of the player's way: a ghost leaves the player's lane for the one farthest
+ * from it, which keeps the bikes from overlapping when they ride side by side.
  */
 
+/** A ghost run as the race feeds it to `updateGhosts`. */
+export type GhostRunView = { name: string; totalMs: number; distanceM: number }
+
 const GHOST_SKIN = findSkin('obsidian')
-/** How far ahead/behind the player it's drawn before hiding it. */
+/** How far ahead/behind the player a ghost is drawn before hiding it. */
 const VISIBLE_AHEAD = 90
 const VISIBLE_BEHIND = 25
 /** Lane change speed, in m/s: one lane (4 m) in ~0.6 s, the full road in ~1.1 s. */
 const GHOST_LANE_SPEED = 7
 
-/** The player starts in the middle lane, so the ghost starts on the right. */
-const START_LANE = LANE_COUNT - 1
-let ghostLane = START_LANE
-let ghostX = laneToX(START_LANE)
+type GhostBike = {
+  root: Entity
+  label: Entity
+  lane: number
+  x: number
+  visible: boolean
+}
 
-let root: Entity = engine.RootEntity
-let label: Entity = engine.RootEntity
-let visible = false
+/** Grows on demand: one bike per ghost the server has sent so far. */
+const bikes: GhostBike[] = []
 
-export function buildGhost() {
-  root = engine.addEntity()
+/**
+ * The player starts in the middle lane, so ghosts start on the sides,
+ * alternating, to spread out rather than stack on one.
+ */
+function startLane(index: number): number {
+  return index % 2 === 0 ? LANE_COUNT - 1 : 0
+}
+
+function buildGhostBike(index: number): GhostBike {
+  const lane = startLane(index)
+  const x = laneToX(lane)
+
+  const root = engine.addEntity()
   Transform.create(root, {
     parent: getWorldRoot(),
-    position: Vector3.create(ghostX, TRACK.roadY + 0.25, TRACK.playerZ),
+    position: Vector3.create(x, TRACK.roadY + 0.25, TRACK.playerZ),
     rotation: Quaternion.fromEulerDegrees(0, BIKE_YAW_DEG, 0)
   })
   GltfContainer.create(root, { src: GHOST_SKIN.model })
@@ -76,7 +92,7 @@ export function buildGhost() {
   })
   VisibilityComponent.create(root, { visible: false })
 
-  label = engine.addEntity()
+  const label = engine.addEntity()
   Transform.create(label, { position: Vector3.create(0, 2.6, 0), parent: root })
   TextShape.create(label, {
     text: 'GHOST',
@@ -87,67 +103,81 @@ export function buildGhost() {
   })
   Billboard.create(label, {})
   VisibilityComponent.create(label, { visible: false })
+
+  return { root, label, lane, x, visible: false }
 }
 
-export function setGhostLabel(ownerName: string, totalMs: number) {
+function labelText(ownerName: string, totalMs: number): string {
   const minutes = Math.floor(totalMs / 60000)
   const seconds = Math.floor((totalMs % 60000) / 1000)
-  // Records saved without a display name carry the short wallet address: never show it.
+  // Times saved without a display name carry the short wallet address: never show it.
   const name = ownerName && !ownerName.startsWith('0x') ? ownerName : 'RECORD'
-  TextShape.getMutable(label).text = `${name}\n${minutes}:${String(seconds).padStart(2, '0')}`
+  return `${name}\n${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-export function hideGhost() {
-  if (!visible) return
-  visible = false
-  VisibilityComponent.getMutable(root).visible = false
-  VisibilityComponent.getMutable(label).visible = false
+function setVisible(bike: GhostBike, visible: boolean) {
+  if (bike.visible === visible) return
+  bike.visible = visible
+  VisibilityComponent.getMutable(bike.root).visible = visible
+  VisibilityComponent.getMutable(bike.label).visible = visible
+}
+
+export function hideGhosts() {
+  for (const bike of bikes) setVisible(bike, false)
 }
 
 /**
  * The lane farthest from the player's. On a tie (player in the middle) the
- * ghost keeps its lane unless it's the player's own.
+ * ghost keeps its lane unless it's the player's own; then the index breaks
+ * the tie, so ghosts leaving together split to both sides.
  */
-function pickLane(playerLane: number): number {
-  let best = ghostLane
-  let bestDistance = ghostLane === playerLane ? -1 : Math.abs(ghostLane - playerLane)
-  for (let lane = 0; lane < LANE_COUNT; lane++) {
-    const distance = Math.abs(lane - playerLane)
-    if (distance > bestDistance) {
-      best = lane
-      bestDistance = distance
-    }
+function pickLane(bike: GhostBike, index: number, playerLane: number): number {
+  if (bike.lane !== playerLane) {
+    const farthest = Math.max(playerLane, LANE_COUNT - 1 - playerLane)
+    if (Math.abs(bike.lane - playerLane) === farthest) return bike.lane
   }
-  return best
+  const left = playerLane
+  const right = LANE_COUNT - 1 - playerLane
+  if (left === right) return startLane(index)
+  return left > right ? 0 : LANE_COUNT - 1
 }
 
 /**
- * Places the ghost based on the distance gap with the player, in the lane
- * that keeps it clear of them.
+ * Places every ghost based on its distance gap with the player, in the lane
+ * that keeps it clear of them. Bikes beyond `ghosts.length` stay hidden.
  */
-export function updateGhost(playerDistanceM: number, ghostDistanceM: number, playerLane: number, dt: number) {
-  ghostLane = pickLane(playerLane)
-  const targetX = laneToX(ghostLane)
+export function updateGhosts(ghosts: GhostRunView[], playerDistanceM: number, playerLane: number, dt: number) {
+  while (bikes.length < ghosts.length) bikes.push(buildGhostBike(bikes.length))
 
-  const gap = ghostDistanceM - playerDistanceM
-  if (gap > VISIBLE_AHEAD || gap < -VISIBLE_BEHIND || ghostDistanceM >= RACE.distanceM) {
-    // Out of sight it just snaps: there's no one to see it slide.
-    ghostX = targetX
-    hideGhost()
-    return
+  for (let i = 0; i < bikes.length; i++) {
+    const bike = bikes[i]
+    const ghost = ghosts[i]
+    if (!ghost) {
+      setVisible(bike, false)
+      continue
+    }
+
+    bike.lane = pickLane(bike, i, playerLane)
+    const targetX = laneToX(bike.lane)
+
+    const gap = ghost.distanceM - playerDistanceM
+    if (gap > VISIBLE_AHEAD || gap < -VISIBLE_BEHIND || ghost.distanceM >= RACE.distanceM) {
+      // Out of sight it just snaps: there's no one to see it slide.
+      bike.x = targetX
+      setVisible(bike, false)
+      continue
+    }
+
+    const text = labelText(ghost.name, ghost.totalMs)
+    if (TextShape.get(bike.label).text !== text) TextShape.getMutable(bike.label).text = text
+    setVisible(bike, true)
+
+    const diff = targetX - bike.x
+    const step = GHOST_LANE_SPEED * dt
+    bike.x = Math.abs(diff) <= step ? targetX : bike.x + Math.sign(diff) * step
+
+    const transform = Transform.getMutable(bike.root)
+    transform.position.x = bike.x
+    transform.position.z = TRACK.playerZ + gap
   }
-
-  const diff = targetX - ghostX
-  const step = GHOST_LANE_SPEED * dt
-  ghostX = Math.abs(diff) <= step ? targetX : ghostX + Math.sign(diff) * step
-
-  if (!visible) {
-    visible = true
-    VisibilityComponent.getMutable(root).visible = true
-    VisibilityComponent.getMutable(label).visible = true
-  }
-
-  const transform = Transform.getMutable(root)
-  transform.position.x = ghostX
-  transform.position.z = TRACK.playerZ + gap
 }

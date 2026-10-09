@@ -10,7 +10,7 @@ import { registerMessages } from '@dcl/sdk/network'
  */
 export const Messages = {
   // ── Client → Server ────────────────────────────────────────────────────
-  /** Handshake on entering the scene. Returns profile, ghost, and leaderboard. */
+  /** Handshake on entering the scene. Returns profile, ghosts, and leaderboard. */
   hello: Schemas.Map({
     displayName: Schemas.String
   }),
@@ -57,15 +57,18 @@ export const Messages = {
     bestTimeMs: Schemas.Int,
     racesFinished: Schemas.Int
   }),
-  /** Track record, to replay it as a ghost. */
-  ghostSync: Schemas.Map({
-    available: Schemas.Boolean,
-    ownerName: Schemas.String,
-    /** Wallet of the record holder, for their profile picture on the HUD. */
-    ownerAddress: Schemas.String,
-    totalMs: Schemas.Int,
-    /** ms accumulated at each checkpoint. `splits[i]` = arrival at meter (i+1)*100. */
-    splits: Schemas.Array(Schemas.Int)
+  /** Every leaderboard time that can be replayed as a ghost, fastest first. */
+  ghostsSync: Schemas.Map({
+    ghosts: Schemas.Array(
+      Schemas.Map({
+        name: Schemas.String,
+        /** Wallet of the racer, for their profile picture on the HUD. */
+        address: Schemas.String,
+        totalMs: Schemas.Int,
+        /** ms accumulated at each checkpoint. `splits[i]` = arrival at meter (i+1)*100. */
+        splits: Schemas.Array(Schemas.Int)
+      })
+    )
   }),
   /** Live progress of the rest of the racers in the scene. */
   standings: Schemas.Map({

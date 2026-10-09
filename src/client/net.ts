@@ -5,32 +5,36 @@ import { DEFAULT_SKIN_ID, RACE, TRACK_ID, formatTime, isCompleteGhost } from '..
 import { room } from '../shared/messages'
 import { ServerHeartbeat, TrackRecord } from '../shared/schemas'
 import { isOnline, showToast, state } from './state'
-import { setGhostLabel } from './game/ghost'
 import { setSkin } from './game/bike'
 
 /** Public catalyst, to tell whether a wallet has a published profile. */
 const PROFILES_URL = 'https://peer.decentraland.org/lambdas/profiles/'
+/** Wallets already looked up: whether each has a published profile. */
+const profileKnown = new Map<string, boolean>()
 
 /**
- * Looks up whether the record holder has a published profile.
+ * Looks up whether a ghost's racer has a published profile.
  *
  * Without one (guests, wallets that never entered Decentraland) the explorer
  * draws nothing for its `avatarTexture` — not even the border — and the UI
  * can't detect that, so the HUD needs to know up front to use the fallback.
- * Until the answer arrives the ghost shows the fallback too.
+ * Until the answer arrives the ghost shows the fallback too. Each wallet is
+ * looked up once per session.
  */
 function checkGhostProfile(address: string) {
-  state.ghostHasProfile = false
-  if (!address) return
+  if (!address || profileKnown.has(address)) return
+  profileKnown.set(address, false)
   executeTask(async () => {
     try {
       const response = await fetch(PROFILES_URL + address)
       const body = response.ok ? await response.json() : null
-      // A newer ghost may have arrived meanwhile: only the latest address counts.
-      if (state.ghostAddress !== address) return
-      state.ghostHasProfile = Array.isArray(body?.avatars) && body.avatars.length > 0
+      const hasProfile = Array.isArray(body?.avatars) && body.avatars.length > 0
+      profileKnown.set(address, hasProfile)
+      for (const ghost of state.ghosts) {
+        if (ghost.address === address) ghost.hasProfile = hasProfile
+      }
     } catch (error) {
-      console.log('[Client] could not look up the ghost profile:', error)
+      console.log('[Client] could not look up a ghost profile:', error)
     }
   })
 }
@@ -149,17 +153,22 @@ function registerHandlers() {
     setSkin(state.equippedSkin)
   })
 
-  room.onMessage('ghostSync', (data) => {
+  room.onMessage('ghostsSync', (data) => {
     markMessage()
-    // A ghost without every split would freeze mid-track: ignore it.
-    const available = data.available && isCompleteGhost(data.splits)
-    state.ghostAvailable = available
-    state.ghostName = data.ownerName
-    state.ghostAddress = data.ownerAddress
-    checkGhostProfile(data.ownerAddress)
-    state.ghostTotalMs = data.totalMs
-    state.ghostSplits = available ? data.splits.slice() : []
-    if (available) setGhostLabel(data.ownerName, data.totalMs)
+    // A ghost without every split would freeze mid-track: drop it. The
+    // player's own time is dropped too: nobody races against themselves.
+    const me = state.myAddress.toLowerCase()
+    state.ghosts = data.ghosts
+      .filter((ghost) => isCompleteGhost(ghost.splits) && ghost.address.toLowerCase() !== me)
+      .map((ghost) => ({
+        name: ghost.name,
+        address: ghost.address,
+        totalMs: ghost.totalMs,
+        splits: ghost.splits.slice(),
+        hasProfile: profileKnown.get(ghost.address) ?? false,
+        distanceM: 0
+      }))
+    for (const ghost of state.ghosts) checkGhostProfile(ghost.address)
   })
 
   room.onMessage('standings', (data) => {

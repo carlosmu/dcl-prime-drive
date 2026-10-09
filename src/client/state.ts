@@ -20,6 +20,18 @@ export type StandingEntry = {
   finished: boolean
 }
 
+/** A leaderboard time replayed as a ghost. */
+export type GhostRun = {
+  name: string
+  address: string
+  totalMs: number
+  splits: number[]
+  /** The racer has a published profile; otherwise the HUD uses the fallback picture. */
+  hasProfile: boolean
+  /** Where the run was at this moment of the race, in meters. */
+  distanceM: number
+}
+
 export type RaceResult = {
   completed: boolean
   accepted: boolean
@@ -89,16 +101,8 @@ export const state = {
   invalidReason: '',
 
   // --- Comparison ---
-  ghostAvailable: false,
-  ghostName: '',
-  /** Record holder's wallet: drives their profile picture on the HUD. */
-  ghostAddress: '',
-  /** The record holder has a published profile; otherwise the HUD uses the fallback picture. */
-  ghostHasProfile: false,
-  ghostTotalMs: 0,
-  ghostSplits: [] as number[],
-  /** Ghost's current distance, in meters. */
-  ghostDistanceM: 0,
+  /** Leaderboard ghosts, fastest first: `ghosts[0]` is the track record. */
+  ghosts: [] as GhostRun[],
   standings: [] as StandingEntry[],
   leaderboard: [] as { name: string; timeMs: number }[],
   recordHolder: '',
@@ -127,8 +131,13 @@ export const state = {
   debugOn: false,
   result: null as RaceResult | null,
   toast: '',
-  toastTimer: 0
+  toastTimer: 0,
+  /** Seconds left of the crash splash; 0 = hidden. */
+  crashFlash: 0
 }
+
+/** Crash splash timing, in seconds: fully visible for `hold`, then fades out over `fade`. */
+export const CRASH_FLASH = { hold: 2, fade: 0.6 }
 
 export function isOnline(): boolean {
   return state.netStatus === 'online'
@@ -148,6 +157,7 @@ export function resetRunState() {
   state.speed = 0
   state.runCoins = 0
   state.crashes = 0
+  state.crashFlash = 0
   state.elapsedMs = 0
   state.lane = 1
   state.boosting = false
@@ -158,7 +168,7 @@ export function resetRunState() {
   state.resultWaitFor = 0
   state.invalidated = false
   state.invalidReason = ''
-  state.ghostDistanceM = 0
+  for (const ghost of state.ghosts) ghost.distanceM = 0
   state.result = null
 }
 

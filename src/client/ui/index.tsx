@@ -1,6 +1,7 @@
 import ReactEcs, { ReactEcsRenderer, UiEntity } from '@dcl/sdk/react-ecs'
 import { state } from '../state'
 import { DebugPanel } from './debug'
+import { CrashFlash } from './crashFlash'
 import { Hud } from './hud'
 import { Menu } from './menu'
 import { Results } from './results'
@@ -19,6 +20,8 @@ export function setupUi() {
  */
 const Root = () => (
   <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute' }}>
+    {/* Under the HUD: drawn on top, it would swallow taps on the touch controls right after a crash. */}
+    {state.crashFlash > 0 ? <CrashFlash /> : null}
     {state.phase === 'racing' || state.phase === 'countdown' ? <Hud /> : null}
     {state.phase === 'menu' ? <Menu /> : null}
     {state.phase === 'finished' || state.phase === 'wrecked' ? <Results /> : null}

@@ -1,6 +1,5 @@
 import { buildBike } from './game/bike'
 import { buildCamera } from './game/camera'
-import { buildGhost } from './game/ghost'
 import { buildMusic } from './game/music'
 import { buildSpawner, prefillSpawner, resetSpawner } from './game/spawner'
 import { buildTrack } from './game/track'
@@ -18,7 +17,6 @@ export function initClient() {
   buildTrack()
   buildSpawner()
   buildBike()
-  buildGhost()
   buildCamera()
   buildMusic()
 

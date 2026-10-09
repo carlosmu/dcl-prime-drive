@@ -15,11 +15,10 @@ export const Hud = () => {
   const boost = boostAmount()
   const mobile = isMobile()
   const progress = state.distanceM / RACE.distanceM
-  const ghostProgress = state.ghostDistanceM / RACE.distanceM
 
   const markers = [] as { progress: number; color: Color4 }[]
-  if (state.ghostAvailable && state.ghostSplits.length > 0) {
-    markers.push({ progress: ghostProgress, color: COLORS.ghost })
+  for (const ghost of state.ghosts) {
+    markers.push({ progress: ghost.distanceM / RACE.distanceM, color: COLORS.ghost })
   }
   for (const rival of state.standings) {
     markers.push({ progress: rival.distanceM / RACE.distanceM, color: COLORS.gold })
@@ -68,7 +67,7 @@ export const Hud = () => {
           }}
         >
           <ProgressBar progress={progress} markers={markers} height={BAR_HEIGHT} radius={BAR_HEIGHT / 2} />
-          <RacerAvatars progress={progress} ghostProgress={ghostProgress} />
+          <RacerAvatars progress={progress} />
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: 34, flexDirection: 'row', margin: { top: 6 } }}>
@@ -115,17 +114,29 @@ export const Hud = () => {
             width: '100%',
             height: 200,
             positionType: 'absolute',
-            position: { top: '38%', left: '0%' }
+            position: { top: '38%', left: '0%' },
+            justifyContent: 'center',
+            alignItems: 'center'
           }}
         >
-          {/* COLORS.danger draws it with the pre-tinted red font, so it stays red on mobile too. */}
-          <Text
-            value={state.phase === 'countdown' ? `${Math.ceil(state.countdown)}` : 'GO!'}
-            size={160}
-            height={200}
-            align="middle-center"
-            color={COLORS.danger}
-          />
+          <UiEntity
+            uiTransform={{
+              width: COUNTDOWN_CIRCLE,
+              height: COUNTDOWN_CIRCLE,
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderRadius: COUNTDOWN_CIRCLE / 2
+            }}
+            uiBackground={{ color: COUNTDOWN_FILL }}
+          >
+            {/* `highlight` uses the pre-tinted yellow font, so it stays yellow on mobile too.
+                GO! is drawn smaller: at the digits' size it's wider than the disc. */}
+            {state.phase === 'countdown' ? (
+              <Text value={`${Math.ceil(state.countdown)}`} size={80} height={100} align="middle-center" highlight />
+            ) : (
+              <Text value="GO!" size={60} height={80} align="middle-center" highlight />
+            )}
+          </UiEntity>
         </UiEntity>
       ) : null}
 
@@ -194,25 +205,39 @@ const BAR_HEIGHT = 13.5
 const AVATAR_SIZE = 32
 /** Shown instead of a profile picture when there isn't one (guests, offline). */
 const FALLBACK_AVATAR = 'assets/images/fallback_profile_pic.png'
+/**
+ * Panel-colored square with a transparent circle, laid over each picture.
+ * Desktop doesn't clip textures to `borderRadius` (mobile does), so this
+ * crops them to a circle on every platform.
+ */
+const AVATAR_MASK = 'assets/images/avatar_mask.png'
 /** How far a picture sticks out above (and below) the bar it's centered on. */
 const AVATAR_OVERHANG = (AVATAR_SIZE - BAR_HEIGHT) / 2
 /** What the thicker bar and its pictures add to the top bar, over the original 5 px bar. */
 const BAR_EXTRA = BAR_HEIGHT - 5 + 2 * AVATAR_OVERHANG
 
 /**
- * The player's and the ghost's profile pictures, on top of the progress bar
+ * The player's and every ghost's profile pictures, on top of the progress bar
  * at each one's spot. Drawn from the furthest back to the furthest ahead: later
- * siblings paint on top, so the leader is always the one fully visible.
+ * siblings paint on top, so the leader is always the one fully visible. On a
+ * tie (the start line) the player goes on top.
  */
-const RacerAvatars = (props: { progress: number; ghostProgress: number }) => {
+const RacerAvatars = (props: { progress: number }) => {
   // An empty userId falls back to the generic picture.
   const playerId = state.myIsGuest ? '' : state.myAddress
-  const racers = [{ key: 'player', userId: playerId, progress: props.progress, color: COLORS.accent }]
-  if (state.ghostAvailable && state.ghostSplits.length > 0) {
-    const ghostId = state.ghostHasProfile ? state.ghostAddress : ''
-    racers.push({ key: 'ghost', userId: ghostId, progress: props.ghostProgress, color: COLORS.ghost })
-  }
-  racers.sort((a, b) => a.progress - b.progress)
+  const racers = [
+    { key: 'player', userId: playerId, progress: props.progress, color: COLORS.accent, isPlayer: true }
+  ]
+  state.ghosts.forEach((ghost, index) => {
+    racers.push({
+      key: `ghost-${index}`,
+      userId: ghost.hasProfile ? ghost.address : '',
+      progress: ghost.distanceM / RACE.distanceM,
+      color: COLORS.ghost,
+      isPlayer: false
+    })
+  })
+  racers.sort((a, b) => a.progress - b.progress || Number(a.isPlayer) - Number(b.isPlayer))
 
   return (
     <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 } }}>
@@ -226,16 +251,31 @@ const RacerAvatars = (props: { progress: number; ghostProgress: number }) => {
             // Centered on its spot along the bar, in both axes.
             position: { left: `${Math.max(0, Math.min(1, racer.progress)) * 100}%`, top: -AVATAR_OVERHANG },
             margin: { left: -AVATAR_SIZE / 2 },
-            borderRadius: AVATAR_SIZE / 2,
-            borderWidth: 2,
-            borderColor: racer.color
+            borderRadius: AVATAR_SIZE / 2
           }}
           uiBackground={
             racer.userId
               ? { textureMode: 'stretch', avatarTexture: { userId: racer.userId } }
               : { textureMode: 'stretch', texture: { src: FALLBACK_AVATAR } }
           }
-        />
+        >
+          <UiEntity
+            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 } }}
+            uiBackground={{ textureMode: 'stretch', texture: { src: AVATAR_MASK } }}
+          />
+          {/* The ring goes over the mask, so the mask's antialiased edge never shows. */}
+          <UiEntity
+            uiTransform={{
+              width: '100%',
+              height: '100%',
+              positionType: 'absolute',
+              position: { top: 0, left: 0 },
+              borderRadius: AVATAR_SIZE / 2,
+              borderWidth: 2,
+              borderColor: racer.color
+            }}
+          />
+        </UiEntity>
       ))}
     </UiEntity>
   )
@@ -243,6 +283,10 @@ const RacerAvatars = (props: { progress: number; ghostProgress: number }) => {
 
 /** Bottom offset of the touch controls: 60 px + 5vh (54 px of the 1080 virtual height). */
 const CONTROLS_BOTTOM = 60 + 54
+
+/** Diameter of the dark disc behind the 3, 2, 1. */
+const COUNTDOWN_CIRCLE = 140
+const COUNTDOWN_FILL = Color4.create(0, 0, 0, 0.3)
 
 /** How long GO! stays on screen once the race starts. */
 const GO_FLASH_MS = 800
@@ -300,11 +344,13 @@ const KeyHints = () => {
   )
 }
 
+/** Gap with the fastest ghost: the track record, unless it's the player's own. */
 function ghostLine(): string {
-  if (!state.ghostAvailable || state.ghostSplits.length === 0) return 'no ghost yet'
-  const gap = state.distanceM - state.ghostDistanceM
+  const record = state.ghosts[0]
+  if (!record) return 'no ghost yet'
+  const gap = state.distanceM - record.distanceM
   const sign = gap >= 0 ? '+' : '-'
-  return `${state.ghostName || 'record'}  ${sign}${Math.abs(Math.round(gap))} m`
+  return `${record.name || 'record'}  ${sign}${Math.abs(Math.round(gap))} m`
 }
 
 const LaneButton = (props: { label: string; direction: number }) => (

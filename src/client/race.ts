@@ -13,10 +13,10 @@ import { Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { movePlayerTo, triggerSceneEmote } from '~system/RestrictedActions'
 import { CHECKPOINT_COUNT, RACE, SCENE, SCENE_CENTER, TRACK, approachSpeed } from '../shared/config'
-import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
+import { CRASH_FLASH, ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
 import { getBikeX, getBikeY, getTurnDirection, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
-import { hideGhost, updateGhost } from './game/ghost'
+import { hideGhosts, updateGhosts } from './game/ghost'
 import { updateMusic } from './game/music'
 import { playWinSfx, prefillSpawner, resetSpawner, updateSpawner } from './game/spawner'
 import { scrollTrack, setWorldOffset } from './game/track'
@@ -221,7 +221,7 @@ export function startRace() {
   resetSpawner()
   prefillSpawner()
   resetBike()
-  hideGhost()
+  hideGhosts()
   uiBoost = false
   uiBrake = false
   state.phase = 'countdown'
@@ -242,7 +242,7 @@ export function abortRace() {
   state.paused = false
   state.phase = 'menu'
   playIdle()
-  hideGhost()
+  hideGhosts()
 }
 
 /** Freezes the race and tells the server to stop its clock too. */
@@ -269,7 +269,7 @@ export function backToMenu() {
   resetRunState()
   resetSpawner()
   resetBike()
-  hideGhost()
+  hideGhosts()
   playIdle()
 }
 
@@ -301,7 +301,7 @@ function endRun(completed: boolean) {
   sendRaceFinish(completed)
   if (completed) playWinSfx()
   playIdle()
-  hideGhost()
+  hideGhosts()
 }
 
 /**
@@ -333,6 +333,7 @@ function raceSystem(dt: number) {
   excludeOwnAvatarFromHiding()
   keepPlayerSeated(dt)
   tickToast(dt)
+  tickCrashFlash(dt)
   tickResultWait(dt)
   updateMusic(dt)
 
@@ -479,6 +480,7 @@ export function changeLane(direction: number) {
 
 function onCrash() {
   state.crashes += 1
+  state.crashFlash = CRASH_FLASH.hold + CRASH_FLASH.fade
   state.speed = RACE.crashSpeed
   state.invulnerableFor = RACE.crashInvulnerability
   if (state.crashes >= RACE.lives) {
@@ -504,13 +506,14 @@ function reportCheckpoints() {
 }
 
 function updateGhostPosition(dt: number) {
-  if (!state.ghostAvailable || state.ghostSplits.length === 0) {
-    state.ghostDistanceM = 0
-    hideGhost()
-    return
+  for (const ghost of state.ghosts) {
+    ghost.distanceM = ghostDistanceAt(state.elapsedMs, ghost.splits, RACE.checkpointIntervalM)
   }
-  state.ghostDistanceM = ghostDistanceAt(state.elapsedMs, state.ghostSplits, RACE.checkpointIntervalM)
-  updateGhost(state.distanceM, state.ghostDistanceM, state.lane, dt)
+  updateGhosts(state.ghosts, state.distanceM, state.lane, dt)
+}
+
+function tickCrashFlash(dt: number) {
+  if (state.crashFlash > 0) state.crashFlash = Math.max(0, state.crashFlash - dt)
 }
 
 function tickToast(dt: number) {
