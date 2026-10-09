@@ -1083,9 +1083,10 @@
   },
   "creator": "0x4B538E1E044922aec2F428EC7E17A99f44205fF9",
   "skyboxConfig": {
-    "fixedTime": 43200
+    "fixedTime": 43200,
+    "transitionMode": 0
   },
-  "landscapeTerrain": true,
+  "landscapeTerrain": false,
   "source": {
     "origin": "creator-hub",
     "projectId": "fe7c5d2f-30db-4359-8dec-d0e268c6d037"

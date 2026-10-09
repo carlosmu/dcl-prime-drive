@@ -71,8 +71,10 @@ export const state = {
   crashes: 0,
   elapsedMs: 0,
   lane: 1,
-  /** The spacebar (or the HUD button) is held down right now. */
+  /** W (or the HUD button) is held down right now. */
   boosting: false,
+  /** S is held down right now. Wins over `boosting` when both are held. */
+  braking: false,
   countdown: 0,
   /** Pause menu open: the race simulation is frozen. */
   paused: false,
@@ -143,6 +145,7 @@ export function resetRunState() {
   state.elapsedMs = 0
   state.lane = 1
   state.boosting = false
+  state.braking = false
   state.paused = false
   state.invulnerableFor = 0
   state.lastCheckpointSent = 0

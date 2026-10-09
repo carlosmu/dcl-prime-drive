@@ -64,7 +64,7 @@ export function laneToX(lane: number): number {
 
 export const RACE = {
   /** Total race distance, in meters. */
-  distanceM: 10000,
+  distanceM: 1000,
   /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
   /** Cruise speed with the throttle released, in m/s (108 km/h). */
@@ -75,6 +75,8 @@ export const RACE = {
   accelTime: 2.5,
   /** Seconds to cover 95% of the gap back down to `baseSpeed` after releasing. */
   decelTime: 1.5,
+  /** Braking with S, in m/s². Constant, like a brake: it does reach a stop. */
+  brakeDecel: 20,
   /** Speed the bike drops to after crashing. Recovers along the accel curve. */
   crashSpeed: 14,
   /** Crashes that end the race. */

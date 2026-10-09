@@ -79,8 +79,10 @@ const POSE_REFRESH_DELAY = 1.5
 let poseRefreshIn = 0
 /** Time left before a held direction key moves another lane. */
 let laneRepeat = 0
-/** Boost requested from the HUD button (mobile and click). */
+/** Boost requested from the HUD button (mobile). */
 let uiBoost = false
+/** Brake requested from the HUD button (mobile). */
+let uiBrake = false
 
 export function initRace() {
   lockPlayer()
@@ -159,9 +161,8 @@ function updateRidePose(dt: number) {
  */
 function lockPlayer() {
   // The whole avatar is frozen, not just walking: `disableWalk`/`disableJog`/
-  // `disableRun` still leave A/D sidestepping enabled. The boost key still
-  // works — `isPressed(IA_JUMP)` reads raw input regardless of what
-  // InputModifier blocks.
+  // `disableRun` still leave A/D sidestepping enabled. W/S still drive the
+  // bike — `isPressed` reads raw input regardless of what InputModifier blocks.
   InputModifier.createOrReplace(engine.PlayerEntity, {
     mode: InputModifier.Mode.Standard({
       disableAll: true,
@@ -222,6 +223,7 @@ export function startRace() {
   resetBike()
   hideGhost()
   uiBoost = false
+  uiBrake = false
   state.phase = 'countdown'
   state.countdown = RACE.countdownSeconds
   state.screen = 'home'
@@ -248,7 +250,9 @@ export function pauseRace() {
   if (state.phase !== 'racing' || state.paused) return
   state.paused = true
   state.boosting = false
+  state.braking = false
   uiBoost = false
+  uiBrake = false
   sendRacePause(true)
 }
 
@@ -343,7 +347,9 @@ function raceSystem(dt: number) {
     // Nobody's accelerating outside of a race: if the HUD button got stuck
     // pressed because the UI disappeared under the finger, release it here.
     state.boosting = false
+    state.braking = false
     uiBoost = false
+  uiBrake = false
     updateBikeAndWorld(dt)
     updateCamera(dt, getBikeX())
     return
@@ -359,8 +365,14 @@ function raceSystem(dt: number) {
 
   // Speed: the throttle (boost) chases `maxSpeed`, releasing it eases back
   // to `baseSpeed`. Distance plays no part: difficulty comes from obstacles.
-  const target = state.boosting ? RACE.maxSpeed : RACE.baseSpeed
-  state.speed = approachSpeed(state.speed, target, dt)
+  // The brake is linear instead, so it bites the same at any speed and stops
+  // the bike; letting go recovers along the accel curve.
+  if (state.braking) {
+    state.speed = Math.max(0, state.speed - RACE.brakeDecel * dt)
+  } else {
+    const target = state.boosting ? RACE.maxSpeed : RACE.baseSpeed
+    state.speed = approachSpeed(state.speed, target, dt)
+  }
 
   const delta = state.speed * dt
   state.distanceM += delta
@@ -426,19 +438,25 @@ function readLaneInput(dt: number) {
 }
 
 /**
- * Boost held with the spacebar.
+ * Throttle held with W, brake held with S.
  *
  * `isPressed`, not `isTriggered`: what matters is the key's state on this
- * frame, not the falling edge. `uiBoost` is the same thing from the HUD
- * button, which on mobile is the only way to trigger it.
+ * frame, not the falling edge. `uiBoost` / `uiBrake` are the same thing
+ * from the HUD buttons, which on mobile are the only way to trigger them.
  */
 function readBoostInput() {
-  state.boosting = uiBoost || inputSystem.isPressed(InputAction.IA_JUMP)
+  state.boosting = uiBoost || inputSystem.isPressed(InputAction.IA_FORWARD)
+  state.braking = uiBrake || inputSystem.isPressed(InputAction.IA_BACKWARD)
 }
 
 /** Boost from the HUD button: stays active while the button is held. */
 export function setBoost(active: boolean) {
   uiBoost = active
+}
+
+/** Brake from the HUD button: stays active while the button is held. */
+export function setBrake(active: boolean) {
+  uiBrake = active
 }
 
 /**

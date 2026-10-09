@@ -3,11 +3,12 @@ import { Color4 } from '@dcl/sdk/math'
 import { isMobile } from '@dcl/sdk/platform'
 import { RACE, formatTime } from '../../shared/config'
 import { livesLeft, state } from '../state'
-import { boostAmount, changeLane, pauseRace, setBoost } from '../race'
+import { boostAmount, changeLane, pauseRace, setBoost, setBrake } from '../race'
 import { PauseMenu } from './pause'
 import { PRIME_FONT } from './bitmapFont'
 import { atlasIcon } from './atlas'
 import { COLORS, PANEL_RADIUS, ProgressBar, Text } from './theme'
+import { KeyboardGuide, keyboardGuideHeight, keyboardGuideWidth } from './keyboardGuide'
 
 /** Race HUD: time, coins, lives, and comparison with rivals. */
 export const Hud = () => {
@@ -120,42 +121,64 @@ export const Hud = () => {
         </UiEntity>
       ) : null}
 
-      {/* Touch / click controls */}
-      <UiEntity
-        uiTransform={{
-          width: 360,
-          height: 150,
-          positionType: 'absolute',
-          position: { bottom: CONTROLS_BOTTOM, left: 60 },
-          flexDirection: 'row',
-          justifyContent: 'space-between'
-        }}
-      >
-        <LaneButton label="<" direction={-1} />
-        <LaneButton label=">" direction={1} />
-      </UiEntity>
-
-      {/* Boost: held down. onMouseLeave releases it if the finger slides off. */}
-      <UiEntity uiTransform={{ positionType: 'absolute', position: { bottom: CONTROLS_BOTTOM, right: 60 } }}>
-        <TouchButton
-          label="BOOST"
-          size={mobile ? 30 : 22}
-          // On mobile it's a thumb target like the lane buttons.
-          width={mobile ? 150 : 200}
-          height={mobile ? 150 : 56}
-          active={boost > 0.05}
-          onDown={() => setBoost(true)}
-          onUp={() => setBoost(false)}
-        />
-      </UiEntity>
-
-      {/* Keyboard hints: meaningless on a touch screen. */}
-      {mobile ? null : <KeyHints boosting={boost > 0.05} />}
+      {/* Touch controls, mobile only: on desktop the keyboard does it all. */}
+      {mobile ? <LaneControls /> : null}
+      {mobile ? <PedalButtons boosting={boost > 0.05} /> : <KeyHints />}
 
       {state.paused ? <PauseMenu /> : null}
     </UiEntity>
   )
 }
+
+const LaneControls = () => (
+  <UiEntity
+    uiTransform={{
+      width: 360,
+      height: 150,
+      positionType: 'absolute',
+      position: { bottom: CONTROLS_BOTTOM, left: 60 },
+      flexDirection: 'row',
+      justifyContent: 'space-between'
+    }}
+  >
+    <LaneButton label="<" direction={-1} />
+    <LaneButton label=">" direction={1} />
+  </UiEntity>
+)
+
+/**
+ * Brake and boost, both held down. onMouseLeave releases them if the finger
+ * slides off. Brake sits on the inside, boost under the right thumb.
+ */
+const PedalButtons = (props: { boosting: boolean }) => (
+  <UiEntity
+    uiTransform={{
+      positionType: 'absolute',
+      position: { bottom: CONTROLS_BOTTOM, right: 60 },
+      flexDirection: 'row'
+    }}
+  >
+    <TouchButton
+      label="BRAKE"
+      size={30}
+      width={150}
+      height={150}
+      active={state.braking}
+      onDown={() => setBrake(true)}
+      onUp={() => setBrake(false)}
+    />
+    <UiEntity uiTransform={{ width: 30 }} />
+    <TouchButton
+      label="BOOST"
+      size={30}
+      width={150}
+      height={150}
+      active={props.boosting}
+      onDown={() => setBoost(true)}
+      onUp={() => setBoost(false)}
+    />
+  </UiEntity>
+)
 
 /** Bottom offset of the touch controls: 60 px + 5vh (54 px of the 1080 virtual height). */
 const CONTROLS_BOTTOM = 60 + 54
@@ -183,40 +206,38 @@ const HudStat = (props: {
   </UiEntity>
 )
 
-/**
- * Only as big as its two lines (not a full-screen wrapper), so it never sits
- * on top of the BOOST or lane buttons and steals their clicks.
- */
-const KeyHints = (props: { boosting: boolean }) => (
-  <UiEntity
-    uiTransform={{
-      width: 380,
-      height: 82,
-      positionType: 'absolute',
-      position: { bottom: CONTROLS_BOTTOM + 70, right: 60 },
-      flexDirection: 'column-reverse'
-    }}
-  >
+/** 80% of the menu tutorial's size. */
+const HINT_SCALE = 0.8
+const HINT_TITLE_HEIGHT = 28
+/** Extra space under the title: the text box already leaves ~5 px, this doubles it. */
+const HINT_TITLE_GAP = 5
+
+/** Keyboard guide, desktop only: right edge, vertically centered. */
+const KeyHints = () => {
+  const height = HINT_TITLE_HEIGHT + HINT_TITLE_GAP + keyboardGuideHeight(HINT_SCALE)
+  return (
     <UiEntity
-      uiTransform={{ width: '100%', height: 44 }}
-      uiText={{
-        value: 'A / D to change lanes',
-        fontSize: 20,
-        color: COLORS.textDim,
-        textAlign: 'middle-right'
+      uiTransform={{
+        positionType: 'absolute',
+        position: { top: '50%', right: 40 },
+        margin: { top: -height / 2 },
+        flexDirection: 'column',
+        alignItems: 'center'
       }}
-    />
-    <UiEntity
-      uiTransform={{ width: '100%', height: 38 }}
-      uiText={{
-        value: 'HOLD SPACE to boost',
-        fontSize: 20,
-        color: props.boosting ? COLORS.gold : COLORS.textDim,
-        textAlign: 'middle-right'
-      }}
-    />
-  </UiEntity>
-)
+    >
+      <Text
+        value="How to play:"
+        size={18}
+        width={keyboardGuideWidth(HINT_SCALE)}
+        height={HINT_TITLE_HEIGHT}
+        align="middle-center"
+        color={COLORS.textDim}
+      />
+      <UiEntity uiTransform={{ height: HINT_TITLE_GAP }} />
+      <KeyboardGuide scale={HINT_SCALE} />
+    </UiEntity>
+  )
+}
 
 function ghostLine(): string {
   if (!state.ghostAvailable || state.ghostSplits.length === 0) return 'no ghost yet'

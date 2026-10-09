@@ -9,6 +9,7 @@ import { isMobile } from '@dcl/sdk/platform'
 import { COLORS, MenuButton, PANEL_RADIUS, PRIMARY_COLOR, TEXT_SIZE, Text } from './theme'
 import { BitmapText, PRIME_FONT_IMAGE_YELLOW } from './bitmapFont'
 import { LEVEL_ART_RATIO, atlasIcon, levelThumb } from './atlas'
+import { KeyboardGuide } from './keyboardGuide'
 
 const PANEL_PADDING = 32
 /**
@@ -204,10 +205,19 @@ const RaceButton = () => {
 /** How to play, plus the race's numbers. */
 const Tutorial = () => (
   <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
-    {/* Touch controls on mobile, keyboard on desktop. The font has no em dash or arrows. */}
-    <ControlLine keys={isMobile() ? ['ARROWS'] : ['A', 'D']} action="Change lanes" first />
-    {/* The mobile key IS the word Boost, so name what it does instead. */}
-    <ControlLine keys={isMobile() ? ['BOOST'] : ['SPACE']} action="Speed up" />
+    {/* Touch controls on mobile, the WASD cluster on desktop. The font has no em dash or arrows. */}
+    {isMobile() ? (
+      <UiEntity uiTransform={{ width: '100%', flexDirection: 'column' }}>
+        <ControlLine keys={['ARROWS']} action="Change lanes" first />
+        {/* The mobile key IS the word Boost, so name what it does instead. */}
+        <ControlLine keys={['BOOST']} action="Speed up" />
+        <ControlLine keys={['BRAKE']} action="Slow down" />
+      </UiEntity>
+    ) : (
+      <UiEntity uiTransform={{ width: '100%', flexDirection: 'row' }}>
+        <KeyboardGuide />
+      </UiEntity>
+    )}
 
     <TutorialGap />
     <TutorialLine value="Dodge obstacles & collect coins." />
