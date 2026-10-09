@@ -387,7 +387,7 @@ function raceSystem(dt: number) {
   })
 
   updateCamera(dt, getBikeX(), boostAmount())
-  updateGhostPosition()
+  updateGhostPosition(dt)
   reportCheckpoints()
 
   if (state.distanceM >= RACE.distanceM) {
@@ -503,14 +503,14 @@ function reportCheckpoints() {
   }
 }
 
-function updateGhostPosition() {
+function updateGhostPosition(dt: number) {
   if (!state.ghostAvailable || state.ghostSplits.length === 0) {
     state.ghostDistanceM = 0
     hideGhost()
     return
   }
   state.ghostDistanceM = ghostDistanceAt(state.elapsedMs, state.ghostSplits, RACE.checkpointIntervalM)
-  updateGhost(state.distanceM, state.ghostDistanceM)
+  updateGhost(state.distanceM, state.ghostDistanceM, state.lane, dt)
 }
 
 function tickToast(dt: number) {
