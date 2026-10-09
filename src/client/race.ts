@@ -12,7 +12,7 @@ import {
 import { Vector3 } from '@dcl/sdk/math'
 import { getPlayer } from '@dcl/sdk/players'
 import { movePlayerTo, triggerSceneEmote } from '~system/RestrictedActions'
-import { CHECKPOINT_COUNT, RACE, SCENE, SCENE_CENTER, TRACK, boostedSpeedAt, targetSpeedAt } from '../shared/config'
+import { CHECKPOINT_COUNT, RACE, SCENE, SCENE_CENTER, TRACK, approachSpeed } from '../shared/config'
 import { ghostDistanceAt, isOnline, resetRunState, showToast, state } from './state'
 import { getBikeX, getBikeY, getTurnDirection, moveLane, playGo, playIdle, resetBike, updateBike } from './game/bike'
 import { activateCamera, updateCamera } from './game/camera'
@@ -357,16 +357,10 @@ function raceSystem(dt: number) {
 
   if (state.invulnerableFor > 0) state.invulnerableFor -= dt
 
-  // Speed: rises toward the target curve, which only depends on distance.
-  // With boost held the target is that same curve multiplied; releasing it
-  // brings the bike down by braking, not from one frame to the next.
-  const target = state.boosting ? boostedSpeedAt(state.distanceM) : targetSpeedAt(state.distanceM)
-  if (state.speed < target) {
-    const rate = state.boosting ? RACE.boostRate : RACE.recoverRate
-    state.speed = Math.min(target, state.speed + rate * dt)
-  } else {
-    state.speed = Math.max(target, state.speed - RACE.boostFalloffRate * dt)
-  }
+  // Speed: the throttle (boost) chases `maxSpeed`, releasing it eases back
+  // to `baseSpeed`. Distance plays no part: difficulty comes from obstacles.
+  const target = state.boosting ? RACE.maxSpeed : RACE.baseSpeed
+  state.speed = approachSpeed(state.speed, target, dt)
 
   const delta = state.speed * dt
   state.distanceM += delta
@@ -454,10 +448,9 @@ export function setBoost(active: boolean) {
  * along the ramp: the camera and HUD follow along instead of snapping.
  */
 export function boostAmount(): number {
-  const base = targetSpeedAt(state.distanceM)
-  if (base <= 0) return 0
-  const over = state.speed / base - 1
-  return Math.max(0, Math.min(1, over / (RACE.boostMultiplier - 1)))
+  const range = RACE.maxSpeed - RACE.baseSpeed
+  if (range <= 0) return 0
+  return Math.max(0, Math.min(1, (state.speed - RACE.baseSpeed) / range))
 }
 
 /** Lane change from the UI buttons (and from mobile). */

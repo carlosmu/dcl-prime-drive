@@ -67,20 +67,16 @@ export const RACE = {
   distanceM: 10000,
   /** How often, in meters, a checkpoint is reported to the server. */
   checkpointIntervalM: 100,
-  /** Speed at the start, in m/s. */
-  baseSpeed: 26,
-  /** Speed at the finish line, in m/s. */
-  topSpeed: 62,
-  /** Speed the bike drops to after crashing. */
+  /** Cruise speed with the throttle released, in m/s (108 km/h). */
+  baseSpeed: 30,
+  /** Speed ceiling with the throttle held (spacebar), in m/s (180 km/h). */
+  maxSpeed: 50,
+  /** Seconds to cover 95% of the gap up to the target speed when accelerating. */
+  accelTime: 2.5,
+  /** Seconds to cover 95% of the gap back down to `baseSpeed` after releasing. */
+  decelTime: 1.5,
+  /** Speed the bike drops to after crashing. Recovers along the accel curve. */
   crashSpeed: 14,
-  /** Acceleration recovering the target speed, in m/s². */
-  recoverRate: 14,
-  /** Speed multiplier while boost is held (spacebar). */
-  boostMultiplier: 1.4,
-  /** Acceleration entering boost, in m/s². */
-  boostRate: 30,
-  /** Deceleration when releasing boost, in m/s². */
-  boostFalloffRate: 24,
   /** Crashes that end the race. */
   lives: 3,
   /** Seconds of invulnerability after a crash. */
@@ -91,38 +87,30 @@ export const RACE = {
 
 export const CHECKPOINT_COUNT = Math.floor(RACE.distanceM / RACE.checkpointIntervalM)
 
-/** Slope of the speed ramp: v(d) = baseSpeed + SPEED_SLOPE * d. */
-const SPEED_SLOPE = (RACE.topSpeed - RACE.baseSpeed) / RACE.distanceM
-
-/** Target speed at a given distance. Deterministic: the server replicates it. */
-export function targetSpeedAt(distanceM: number): number {
-  const d = Math.max(0, Math.min(RACE.distanceM, distanceM))
-  return RACE.baseSpeed + SPEED_SLOPE * d
-}
-
 /**
- * Target speed with boost held. It's the bike's absolute ceiling:
- * `idealTimeMs` integrates this curve, not `targetSpeedAt`'s.
+ * Speed after `dt` seconds chasing `target`.
+ *
+ * Exponential approach: the bike gains (or sheds) speed fast while far from
+ * the target and eases off as it closes in, so the curve never snaps. The
+ * time constant is derived so that `accelTime` / `decelTime` cover 95% of the
+ * gap (e^-3 ≈ 5%, hence ln 20). Rising toward the target always uses the
+ * accel curve, which is also what recovers the bike after a crash.
  */
-export function boostedSpeedAt(distanceM: number): number {
-  return targetSpeedAt(distanceM) * RACE.boostMultiplier
+export function approachSpeed(speed: number, target: number, dt: number): number {
+  const time = speed < target ? RACE.accelTime : RACE.decelTime
+  const tau = time / Math.log(20)
+  return target + (speed - target) * Math.exp(-dt / tau)
 }
 
 /**
  * Theoretical minimum time to cover `distanceM`, in ms.
  *
- * With v(d) = (a + k·d)·m, integrating dt = dd/v(d) gives t = ln((a + k·d)/a) / (k·m).
- * The `m` factor is the boost: the floor assumes the perfect race with the
- * spacebar held down from end to end, which is the fastest the scene can go.
- * Without it, a legitimate race with boost would fall below the floor and
- * the server would reject it.
+ * Nothing can outrun `maxSpeed`, so the floor assumes the bike sits at it from
+ * the first meter. The real race is slower (it starts at `baseSpeed` and has
+ * to accelerate), which keeps legitimate races safely above the floor.
  */
 export function idealTimeMs(distanceM: number): number {
-  const d = Math.max(0, distanceM)
-  const a = RACE.baseSpeed
-  const m = RACE.boostMultiplier
-  if (SPEED_SLOPE <= 0) return (d / (a * m)) * 1000
-  return (Math.log((a + SPEED_SLOPE * d) / a) / (SPEED_SLOPE * m)) * 1000
+  return (Math.max(0, distanceM) / RACE.maxSpeed) * 1000
 }
 
 /** Tolerance margin over `idealTimeMs` (lag, frame jitter). */
@@ -253,7 +241,7 @@ export function findSkin(id: string): SkinDef {
 // ─── Track identifier ──────────────────────────────────────────────────
 
 /** Changing this id invalidates saved records and ghosts (useful when rebalancing). */
-export const TRACK_ID = 'neon-mile-v2'
+export const TRACK_ID = 'neon-mile-v3'
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
 
