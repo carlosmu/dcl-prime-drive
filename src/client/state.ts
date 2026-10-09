@@ -57,6 +57,8 @@ export const state = {
   // --- Profile (server authority) ---
   netStatus: 'connecting' as NetStatus,
   myAddress: '',
+  /** Guests have no profile: the HUD shows a fallback picture for them. */
+  myIsGuest: true,
   myName: '',
   coins: 0,
   ownedSkins: [DEFAULT_SKIN_ID] as string[],
@@ -89,6 +91,10 @@ export const state = {
   // --- Comparison ---
   ghostAvailable: false,
   ghostName: '',
+  /** Record holder's wallet: drives their profile picture on the HUD. */
+  ghostAddress: '',
+  /** The record holder has a published profile; otherwise the HUD uses the fallback picture. */
+  ghostHasProfile: false,
   ghostTotalMs: 0,
   ghostSplits: [] as number[],
   /** Ghost's current distance, in meters. */

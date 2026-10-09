@@ -318,8 +318,14 @@ async function sendGhost(address: string) {
   room.send(
     'ghostSync',
     ghost
-      ? { available: true, ownerName: ghost.name, totalMs: ghost.totalMs, splits: ghost.splits }
-      : { available: false, ownerName: '', totalMs: 0, splits: [] },
+      ? {
+          available: true,
+          ownerName: ghost.name,
+          ownerAddress: ghost.address,
+          totalMs: ghost.totalMs,
+          splits: ghost.splits
+        }
+      : { available: false, ownerName: '', ownerAddress: '', totalMs: 0, splits: [] },
     { to: [address] }
   )
 }
@@ -328,6 +334,7 @@ function broadcastGhost(ghost: GhostRecord) {
   room.send('ghostSync', {
     available: true,
     ownerName: ghost.name,
+    ownerAddress: ghost.address,
     totalMs: ghost.totalMs,
     splits: ghost.splits
   })

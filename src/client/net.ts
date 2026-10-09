@@ -1,4 +1,4 @@
-import { engine } from '@dcl/sdk/ecs'
+import { engine, executeTask } from '@dcl/sdk/ecs'
 import { getPlayer } from '@dcl/sdk/players'
 import { isStateSyncronized } from '@dcl/sdk/network'
 import { DEFAULT_SKIN_ID, RACE, TRACK_ID, formatTime, isCompleteGhost } from '../shared/config'
@@ -7,6 +7,33 @@ import { ServerHeartbeat, TrackRecord } from '../shared/schemas'
 import { isOnline, showToast, state } from './state'
 import { setGhostLabel } from './game/ghost'
 import { setSkin } from './game/bike'
+
+/** Public catalyst, to tell whether a wallet has a published profile. */
+const PROFILES_URL = 'https://peer.decentraland.org/lambdas/profiles/'
+
+/**
+ * Looks up whether the record holder has a published profile.
+ *
+ * Without one (guests, wallets that never entered Decentraland) the explorer
+ * draws nothing for its `avatarTexture` — not even the border — and the UI
+ * can't detect that, so the HUD needs to know up front to use the fallback.
+ * Until the answer arrives the ghost shows the fallback too.
+ */
+function checkGhostProfile(address: string) {
+  state.ghostHasProfile = false
+  if (!address) return
+  executeTask(async () => {
+    try {
+      const response = await fetch(PROFILES_URL + address)
+      const body = response.ok ? await response.json() : null
+      // A newer ghost may have arrived meanwhile: only the latest address counts.
+      if (state.ghostAddress !== address) return
+      state.ghostHasProfile = Array.isArray(body?.avatars) && body.avatars.length > 0
+    } catch (error) {
+      console.log('[Client] could not look up the ghost profile:', error)
+    }
+  })
+}
 
 /**
  * Client network layer.
@@ -70,6 +97,7 @@ function handshakeSystem(dt: number) {
   }
 
   state.myAddress = player?.userId ?? ''
+  state.myIsGuest = player?.isGuest ?? true
   state.myName = player?.name ?? ''
   helloSent = true
   state.netStatus = 'online'
@@ -127,6 +155,8 @@ function registerHandlers() {
     const available = data.available && isCompleteGhost(data.splits)
     state.ghostAvailable = available
     state.ghostName = data.ownerName
+    state.ghostAddress = data.ownerAddress
+    checkGhostProfile(data.ownerAddress)
     state.ghostTotalMs = data.totalMs
     state.ghostSplits = available ? data.splits.slice() : []
     if (available) setGhostLabel(data.ownerName, data.totalMs)

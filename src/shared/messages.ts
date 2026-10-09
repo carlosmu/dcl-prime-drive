@@ -61,6 +61,8 @@ export const Messages = {
   ghostSync: Schemas.Map({
     available: Schemas.Boolean,
     ownerName: Schemas.String,
+    /** Wallet of the record holder, for their profile picture on the HUD. */
+    ownerAddress: Schemas.String,
     totalMs: Schemas.Int,
     /** ms accumulated at each checkpoint. `splits[i]` = arrival at meter (i+1)*100. */
     splits: Schemas.Array(Schemas.Int)

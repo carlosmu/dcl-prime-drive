@@ -161,6 +161,8 @@ export const Text = (props: {
 export const ProgressBar = (props: {
   progress: number
   height?: number
+  /** Corner radius of the track and the fill. */
+  radius?: number
   color?: Color4
   markers?: { progress: number; color: Color4 }[]
 }) => {
@@ -168,7 +170,7 @@ export const ProgressBar = (props: {
   const clamped = Math.max(0, Math.min(1, props.progress))
   return (
     <UiEntity
-      uiTransform={{ width: '100%', height, positionType: 'relative' }}
+      uiTransform={{ width: '100%', height, positionType: 'relative', borderRadius: props.radius }}
       uiBackground={{ color: COLORS.track }}
     >
       <UiEntity
@@ -176,7 +178,8 @@ export const ProgressBar = (props: {
           width: `${clamped * 100}%`,
           height: '100%',
           positionType: 'absolute',
-          position: { left: '0%', top: '0%' }
+          position: { left: '0%', top: '0%' },
+          borderRadius: props.radius
         }}
         uiBackground={{ color: props.color ?? COLORS.accent }}
       />

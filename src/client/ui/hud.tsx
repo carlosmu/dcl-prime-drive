@@ -31,7 +31,7 @@ export const Hud = () => {
       <UiEntity
         uiTransform={{
           width: '50%',
-          height: 142,
+          height: 142 + BAR_EXTRA,
           positionType: 'absolute',
           position: { top: 0, left: '25%' },
           flexDirection: 'column',
@@ -59,8 +59,16 @@ export const Hud = () => {
           />
         </UiEntity>
 
-        <UiEntity uiTransform={{ width: '100%', height: 5, margin: { top: 6 } }}>
-          <ProgressBar progress={progress} markers={markers} height={4.5} />
+        {/* Margins leave room for the profile pictures that stick out above and below the bar. */}
+        <UiEntity
+          uiTransform={{
+            width: '100%',
+            height: BAR_HEIGHT,
+            margin: { top: 6 + AVATAR_OVERHANG, bottom: AVATAR_OVERHANG }
+          }}
+        >
+          <ProgressBar progress={progress} markers={markers} height={BAR_HEIGHT} radius={BAR_HEIGHT / 2} />
+          <RacerAvatars progress={progress} ghostProgress={ghostProgress} />
         </UiEntity>
 
         <UiEntity uiTransform={{ width: '100%', height: 34, flexDirection: 'row', margin: { top: 6 } }}>
@@ -87,7 +95,7 @@ export const Hud = () => {
             width: 720,
             height: 52,
             positionType: 'absolute',
-            position: { top: 172, left: '50%' },
+            position: { top: 172 + BAR_EXTRA, left: '50%' },
             margin: { left: -360 }
           }}
           uiBackground={{ color: Color4.create(0.4, 0.05, 0.05, 0.9) }}
@@ -179,6 +187,59 @@ const PedalButtons = (props: { boosting: boolean }) => (
     />
   </UiEntity>
 )
+
+/** Progress bar thickness. */
+const BAR_HEIGHT = 13.5
+/** Profile pictures sitting on the progress bar. */
+const AVATAR_SIZE = 32
+/** Shown instead of a profile picture when there isn't one (guests, offline). */
+const FALLBACK_AVATAR = 'assets/images/fallback_profile_pic.png'
+/** How far a picture sticks out above (and below) the bar it's centered on. */
+const AVATAR_OVERHANG = (AVATAR_SIZE - BAR_HEIGHT) / 2
+/** What the thicker bar and its pictures add to the top bar, over the original 5 px bar. */
+const BAR_EXTRA = BAR_HEIGHT - 5 + 2 * AVATAR_OVERHANG
+
+/**
+ * The player's and the ghost's profile pictures, on top of the progress bar
+ * at each one's spot. Drawn from the furthest back to the furthest ahead: later
+ * siblings paint on top, so the leader is always the one fully visible.
+ */
+const RacerAvatars = (props: { progress: number; ghostProgress: number }) => {
+  // An empty userId falls back to the generic picture.
+  const playerId = state.myIsGuest ? '' : state.myAddress
+  const racers = [{ key: 'player', userId: playerId, progress: props.progress, color: COLORS.accent }]
+  if (state.ghostAvailable && state.ghostSplits.length > 0) {
+    const ghostId = state.ghostHasProfile ? state.ghostAddress : ''
+    racers.push({ key: 'ghost', userId: ghostId, progress: props.ghostProgress, color: COLORS.ghost })
+  }
+  racers.sort((a, b) => a.progress - b.progress)
+
+  return (
+    <UiEntity uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 } }}>
+      {racers.map((racer) => (
+        <UiEntity
+          key={racer.key}
+          uiTransform={{
+            width: AVATAR_SIZE,
+            height: AVATAR_SIZE,
+            positionType: 'absolute',
+            // Centered on its spot along the bar, in both axes.
+            position: { left: `${Math.max(0, Math.min(1, racer.progress)) * 100}%`, top: -AVATAR_OVERHANG },
+            margin: { left: -AVATAR_SIZE / 2 },
+            borderRadius: AVATAR_SIZE / 2,
+            borderWidth: 2,
+            borderColor: racer.color
+          }}
+          uiBackground={
+            racer.userId
+              ? { textureMode: 'stretch', avatarTexture: { userId: racer.userId } }
+              : { textureMode: 'stretch', texture: { src: FALLBACK_AVATAR } }
+          }
+        />
+      ))}
+    </UiEntity>
+  )
+}
 
 /** Bottom offset of the touch controls: 60 px + 5vh (54 px of the 1080 virtual height). */
 const CONTROLS_BOTTOM = 60 + 54
