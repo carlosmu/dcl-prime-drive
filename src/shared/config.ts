@@ -79,6 +79,12 @@ export const RACE = {
   brakeDecel: 20,
   /** Speed the bike drops to after crashing. Recovers along the accel curve. */
   crashSpeed: 14,
+  /** Blue diamond: added on top of the target speed, in m/s (+50 km/h). */
+  padBoostSpeed: 50 / 3.6,
+  /** Seconds the blue diamond lasts. Grabbing another one restarts it. */
+  padBoostSeconds: 10,
+  /** Oil slick: the speed is multiplied by this on contact, then recovers along the accel curve. */
+  oilSpeedFactor: 0.6,
   /** Crashes that end the race. */
   lives: 3,
   /** Seconds of invulnerability after a crash. */
@@ -104,15 +110,19 @@ export function approachSpeed(speed: number, target: number, dt: number): number
   return target + (speed - target) * Math.exp(-dt / tau)
 }
 
+/** The fastest the bike can ever go: full throttle with a blue diamond active. */
+export const TOP_SPEED = RACE.maxSpeed + RACE.padBoostSpeed
+
 /**
  * Theoretical minimum time to cover `distanceM`, in ms.
  *
- * Nothing can outrun `maxSpeed`, so the floor assumes the bike sits at it from
- * the first meter. The real race is slower (it starts at `baseSpeed` and has
- * to accelerate), which keeps legitimate races safely above the floor.
+ * Nothing can outrun `TOP_SPEED`, so the floor assumes the bike sits at it
+ * from the first meter, as if diamonds were chained end to end. The real race
+ * is slower (it starts at `baseSpeed` and has to accelerate), which keeps
+ * legitimate races safely above the floor.
  */
 export function idealTimeMs(distanceM: number): number {
-  return (Math.max(0, distanceM) / RACE.maxSpeed) * 1000
+  return (Math.max(0, distanceM) / TOP_SPEED) * 1000
 }
 
 /** Tolerance margin over `idealTimeMs` (lag, frame jitter). */
@@ -160,7 +170,12 @@ export const SPAWN = {
   /** Meters between lane divider stripes. */
   laneStripeEveryM: 8,
   /** Meters between track edge pieces. */
-  trackEdgeEveryM: 4
+  trackEdgeEveryM: 4,
+  /** Meters between pads (oil slick or blue diamond), give or take `padJitterM`. */
+  padEveryM: 80,
+  padJitterM: 25,
+  /** Share of pads that are oil slicks; the rest are blue diamonds. */
+  oilChance: 0.5
 } as const
 
 // ─── Skins ───────────────────────────────────────────────────────────────────

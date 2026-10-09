@@ -133,7 +133,9 @@ export const state = {
   toast: '',
   toastTimer: 0,
   /** Seconds left of the crash splash; 0 = hidden. */
-  crashFlash: 0
+  crashFlash: 0,
+  /** Seconds left of the blue diamond's extra speed; 0 = none. */
+  padBoostFor: 0
 }
 
 /** Crash splash timing, in seconds: fully visible for `hold`, then fades out over `fade`. */
@@ -164,6 +166,7 @@ export function resetRunState() {
   state.braking = false
   state.paused = false
   state.invulnerableFor = 0
+  state.padBoostFor = 0
   state.lastCheckpointSent = 0
   state.resultWaitFor = 0
   state.invalidated = false

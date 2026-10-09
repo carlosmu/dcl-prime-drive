@@ -2,6 +2,7 @@ import ReactEcs, { UiEntity } from '@dcl/sdk/react-ecs'
 import { Color4 } from '@dcl/sdk/math'
 import { CHECKPOINT_COUNT, TRACK_ID } from '../../shared/config'
 import { state } from '../state'
+import { padDebugLine } from '../game/spawner'
 import { COLORS } from './theme'
 
 /**
@@ -22,7 +23,7 @@ export const DebugPanel = () => (
   <UiEntity
     uiTransform={{
       width: 640,
-      height: 8 * ROW_HEIGHT + 20,
+      height: 10 * ROW_HEIGHT + 20,
       positionType: 'absolute',
       position: { bottom: 20, left: '50%' },
       margin: { left: -320 },
@@ -52,6 +53,12 @@ export const DebugPanel = () => (
       color={state.invalidated ? COLORS.danger : COLORS.text}
     />
     <Row label="track" value={`${TRACK_ID} - clock ${state.clock.toFixed(1)}s`} />
+    <Row label="pads" value={padDebugLine()} />
+    <Row
+      label="speed"
+      value={`${Math.round(state.speed * 3.6)} km/h - diamond ${state.padBoostFor > 0 ? `${state.padBoostFor.toFixed(1)}s left` : 'off'}`}
+      color={state.padBoostFor > 0 ? COLORS.accent : COLORS.text}
+    />
 
     <UiEntity
       uiTransform={{ width: 32, height: 32, positionType: 'absolute', position: { top: 4, right: 4 } }}

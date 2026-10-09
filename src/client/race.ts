@@ -368,10 +368,14 @@ function raceSystem(dt: number) {
   // to `baseSpeed`. Distance plays no part: difficulty comes from obstacles.
   // The brake is linear instead, so it bites the same at any speed and stops
   // the bike; letting go recovers along the accel curve.
+  // A blue diamond raises whichever target applies, and fades out along the
+  // decel curve once it runs out.
+  if (state.padBoostFor > 0) state.padBoostFor = Math.max(0, state.padBoostFor - dt)
   if (state.braking) {
     state.speed = Math.max(0, state.speed - RACE.brakeDecel * dt)
   } else {
-    const target = state.boosting ? RACE.maxSpeed : RACE.baseSpeed
+    const padBonus = state.padBoostFor > 0 ? RACE.padBoostSpeed : 0
+    const target = (state.boosting ? RACE.maxSpeed : RACE.baseSpeed) + padBonus
     state.speed = approachSpeed(state.speed, target, dt)
   }
 
@@ -384,7 +388,18 @@ function raceSystem(dt: number) {
     onCoin: () => {
       state.runCoins += 1
     },
-    onCrash: onCrash
+    onCrash: onCrash,
+    onOil: () => {
+      state.speed *= RACE.oilSpeedFactor
+    },
+    onSpeedPad: () => {
+      state.padBoostFor = RACE.padBoostSeconds
+      // The kick lands at once so it's felt, rather than easing in along the
+      // accel curve. Capped at the boosted target, so a second diamond while
+      // one is active refreshes the timer without stacking speed.
+      const boostedTarget = (state.boosting ? RACE.maxSpeed : RACE.baseSpeed) + RACE.padBoostSpeed
+      state.speed = Math.max(state.speed, Math.min(state.speed + RACE.padBoostSpeed, boostedTarget))
+    }
   })
 
   updateCamera(dt, getBikeX(), boostAmount())

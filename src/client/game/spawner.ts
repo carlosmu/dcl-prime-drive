@@ -5,7 +5,7 @@ import { getWorldRoot } from './track'
 import { duckMusic } from './music'
 
 /**
- * Coins, obstacles, and checkpoint arches.
+ * Coins, obstacles, pads, and checkpoint arches.
  *
  * Everything comes from pools created at startup: during the race only
  * Transforms move. Inactive pieces are parked at Y = -200, out of camera view.
@@ -33,6 +33,22 @@ const COIN_Y = 0.4
 const COIN_POOL_SIZE = 44
 const OBSTACLE_POOL_SIZE = 20
 const ARCH_POOL_SIZE = 4
+/** Per kind. One pad every ~80 m over ~280 m of lookahead keeps 3-5 on screen. */
+const PAD_POOL_SIZE = 6
+
+/** Placeholder looks, to be replaced by models: a black disc and a blue diamond lying on the road. */
+const OIL_DIAMETER = 2
+/** Corner to corner: the diamond's side is this over sqrt(2). */
+const SPEED_PAD_DIAMETER = 2
+const SPEED_PAD_SIDE = SPEED_PAD_DIAMETER / Math.SQRT2
+/** The diamond is stretched along the track: 2 m wide, 6 m long. */
+const SPEED_PAD_STRETCH_Z = 3
+/**
+ * Floating clearly above the asphalt (its top face is at 0.1 m) so they read
+ * from the low chase camera. To be lowered once they have proper models.
+ */
+const PAD_Y = 0.3
+const PAD_THICKNESS = 0.08
 
 const ARCH_SCALE_Y = 1.1
 /** The arch's origin is 0.92 m above the mesh's base. */
@@ -85,6 +101,8 @@ const COIN_CATCH_Y = 1.8
 const coins: PoolItem[] = []
 const obstacles: PoolItem[] = []
 const arches: PoolItem[] = []
+const oilSlicks: PoolItem[] = []
+const speedPads: PoolItem[] = []
 
 let coinSfx: Entity[] = []
 let coinSfxIndex = 0
@@ -95,10 +113,18 @@ let winSfx: Entity = engine.RootEntity
 let nextCoinWaveAtM = 0
 let nextObstacleAtM = 0
 let nextArchAtM = 0
+let nextPadAtM = 0
+/** Pads ridden over since the last reset, for the debug panel. */
+let oilHits = 0
+let speedPadHits = 0
 
 export type SpawnEvents = {
   onCoin: () => void
   onCrash: () => void
+  /** Rode over an oil slick. */
+  onOil: () => void
+  /** Rode over a blue diamond. */
+  onSpeedPad: () => void
 }
 
 export function buildSpawner() {
@@ -133,6 +159,11 @@ export function buildSpawner() {
       scale: Vector3.create(1, ARCH_SCALE_Y, 3.2)
     })
     arches.push({ entity, active: false, consumed: false, halfWidth: 0, spawnY: ARCH_BASE_Y })
+  }
+
+  for (let i = 0; i < PAD_POOL_SIZE; i++) {
+    oilSlicks.push(buildOilSlick())
+    speedPads.push(buildSpeedPad())
   }
 
   coinSfx = []
@@ -201,6 +232,51 @@ function buildBarrier(): PoolItem {
   }
 }
 
+/** Oil slick: flat glossy black disc. Slows the bike down, costs no life. */
+function buildOilSlick(): PoolItem {
+  const entity = engine.addEntity()
+  Transform.create(entity, {
+    parent: getWorldRoot(),
+    position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
+    scale: Vector3.create(OIL_DIAMETER, PAD_THICKNESS, OIL_DIAMETER)
+  })
+  MeshRenderer.setCylinder(entity)
+  Material.setPbrMaterial(entity, {
+    albedoColor: Color4.create(0.02, 0.02, 0.02, 1),
+    roughness: 0.1,
+    metallic: 0.6
+  })
+  return { entity, active: false, consumed: false, halfWidth: OIL_DIAMETER / 2, spawnY: PAD_Y }
+}
+
+/** Speed pad: flat glowing blue square turned 45 degrees into a diamond, stretched along the track. */
+function buildSpeedPad(): PoolItem {
+  // The stretch lives on the parent: scaling the turned square itself would
+  // give a tilted rectangle, while scaling its parent pulls it into a rhombus.
+  const entity = engine.addEntity()
+  Transform.create(entity, {
+    parent: getWorldRoot(),
+    position: Vector3.create(TRACK.centerX, PARKED_Y, 0),
+    scale: Vector3.create(1, 1, SPEED_PAD_STRETCH_Z)
+  })
+
+  const diamond = engine.addEntity()
+  Transform.create(diamond, {
+    parent: entity,
+    rotation: Quaternion.fromEulerDegrees(0, 45, 0),
+    scale: Vector3.create(SPEED_PAD_SIDE, PAD_THICKNESS, SPEED_PAD_SIDE)
+  })
+  MeshRenderer.setBox(diamond)
+  Material.setPbrMaterial(diamond, {
+    albedoColor: Color4.create(0.1, 0.45, 1, 1),
+    emissiveColor: Color3.create(0.1, 0.5, 1),
+    emissiveIntensity: 3,
+    roughness: 0.3,
+    metallic: 0
+  })
+  return { entity, active: false, consumed: false, halfWidth: SPEED_PAD_DIAMETER / 2, spawnY: PAD_Y }
+}
+
 function buildCone(): PoolItem {
   const entity = engine.addEntity()
   GltfContainer.create(entity, { src: CONE_MODEL })
@@ -227,12 +303,15 @@ export function playWinSfx() {
 
 /** Returns everything to the pool and resets the spawn counters. */
 export function resetSpawner() {
-  for (const pool of [coins, obstacles, arches]) {
+  for (const pool of [coins, obstacles, arches, oilSlicks, speedPads]) {
     for (const item of pool) park(item)
   }
   nextCoinWaveAtM = 60
   nextObstacleAtM = SPAWN.obstacleEveryStartM
   nextArchAtM = RACE.checkpointIntervalM
+  nextPadAtM = padInterval()
+  oilHits = 0
+  speedPadHits = 0
 }
 
 /**
@@ -288,6 +367,21 @@ export function updateSpawner(
       currentTime: 0
     })
     events.onCrash()
+    return true
+  })
+
+  // Pads ignore post-crash invulnerability: they aren't hits.
+  moveAndTest(oilSlicks, dt, delta, bikeX, (item, dx) => {
+    if (dx > item.halfWidth + BIKE_HALF_WIDTH) return false
+    oilHits++
+    events.onOil()
+    return true
+  })
+
+  moveAndTest(speedPads, dt, delta, bikeX, (item, dx) => {
+    if (dx > item.halfWidth + BIKE_HALF_WIDTH) return false
+    speedPadHits++
+    events.onSpeedPad()
     return true
   })
 
@@ -368,6 +462,11 @@ function spawnDue(distanceM: number) {
     nextObstacleAtM += obstacleIntervalAt(nextObstacleAtM)
   }
 
+  while (nextPadAtM <= horizonM) {
+    spawnPad(zForSchedule(nextPadAtM, distanceM))
+    nextPadAtM += padInterval()
+  }
+
   while (nextArchAtM <= horizonM) {
     spawnArch(zForSchedule(nextArchAtM, distanceM))
     nextArchAtM += RACE.checkpointIntervalM
@@ -407,6 +506,41 @@ function spawnObstacleGroup(z: number) {
     if (!item) return
     activate(item, laneToX(lane), z)
   }
+}
+
+/**
+ * Debug readout: pads on the track and the nearest one ahead, as
+ * `oil N - boost N - next <kind> <meters ahead> m @ x,y`.
+ */
+export function padDebugLine(): string {
+  let nearest: { kind: string; item: PoolItem; z: number } | null = null
+  let oil = 0
+  let boost = 0
+  for (const [kind, pool] of [['oil', oilSlicks], ['boost', speedPads]] as const) {
+    for (const item of pool) {
+      if (!item.active) continue
+      if (kind === 'oil') oil++
+      else boost++
+      const z = Transform.get(item.entity).position.z
+      if (z >= TRACK.playerZ && (!nearest || z < nearest.z)) nearest = { kind, item, z }
+    }
+  }
+  const hits = `hits oil ${oilHits} / boost ${speedPadHits}`
+  if (!nearest) return `${hits} - none ahead (next spawn at ${Math.round(nextPadAtM)} m)`
+  return `${hits} - next ${nearest.kind} in ${Math.round(nearest.z - TRACK.playerZ)} m`
+}
+
+/** Random spacing between pads, so they don't fall into a rhythm. */
+function padInterval(): number {
+  return SPAWN.padEveryM + (Math.random() * 2 - 1) * SPAWN.padJitterM
+}
+
+/** One oil slick or blue diamond in a random lane. */
+function spawnPad(z: number) {
+  const pool = Math.random() < SPAWN.oilChance ? oilSlicks : speedPads
+  const item = takeFree(pool)
+  if (!item) return
+  activate(item, laneToX(randomInt(0, LANE_COUNT - 1)), z)
 }
 
 function spawnArch(z: number) {
