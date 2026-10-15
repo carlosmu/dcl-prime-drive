@@ -17,7 +17,9 @@ export const Messages = {
   /** Starts a race. The server timestamps the start time on its side. */
   raceStart: Schemas.Map({
     trackId: Schemas.String,
-    skinId: Schemas.String
+    skinId: Schemas.String,
+    /** Repeated from `hello`: a server restarted since then no longer knows it. */
+    displayName: Schemas.String
   }),
   /** Sent every 100 m traveled. */
   checkpoint: Schemas.Map({

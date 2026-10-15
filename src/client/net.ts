@@ -231,7 +231,10 @@ function registerHandlers() {
 
 export function sendRaceStart() {
   if (!isOnline()) return
-  room.send('raceStart', { trackId: TRACK_ID, skinId: state.equippedSkin })
+  // The profile may have loaded after the `hello` went out without a name.
+  const name = getPlayer()?.name ?? ''
+  if (name.trim().length > 0) state.myName = name
+  room.send('raceStart', { trackId: TRACK_ID, skinId: state.equippedSkin, displayName: state.myName })
 }
 
 export function sendCheckpoint(index: number) {

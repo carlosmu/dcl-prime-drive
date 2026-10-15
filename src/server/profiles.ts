@@ -93,38 +93,41 @@ export async function saveProfile(address: string, profile: PlayerProfile): Prom
   const clean = sanitize(profile)
   cache.set(address, clean)
   try {
-    await Storage.player.set(address, PROFILE_KEY, clean)
+    const ok = await Storage.player.set(address, PROFILE_KEY, clean)
+    if (!ok) console.log(`[Server] profile for ${address} was not persisted`)
   } catch (error) {
     console.log(`[Server] could not save profile for ${address}:`, error)
   }
 }
 
 // --- Ghost and leaderboard (shared scene storage) -----------------------
+//
+// `Storage.get` answers `null` both for "no value" and for a failed read, so a
+// null is never cached as a confirmed empty state: it's asked again next time.
+// Caching it would let the next finished race overwrite the stored board (or
+// ghost) with just that one time, wiping everyone else's.
 
 let ghostCache: GhostRecord | null = null
-let ghostLoaded = false
 
 export async function loadGhost(): Promise<GhostRecord | null> {
-  if (ghostLoaded) return ghostCache
+  if (ghostCache) return ghostCache
   try {
     const stored = await Storage.get<GhostRecord>(GHOST_KEY)
     // Only a race that covered every checkpoint can be replayed: a partial
     // ghost freezes on the track once its splits run out.
-    ghostCache = stored && isCompleteGhost(stored.splits) ? stored : null
-    if (stored && !ghostCache) console.log(`[Server] discarding incomplete ghost (${stored.splits.length} splits)`)
+    if (stored && isCompleteGhost(stored.splits)) ghostCache = stored
+    else if (stored) console.log(`[Server] discarding incomplete ghost (${stored.splits.length} splits)`)
   } catch (error) {
     console.log('[Server] could not read ghost:', error)
-    ghostCache = null
   }
-  ghostLoaded = true
   return ghostCache
 }
 
 export async function saveGhost(record: GhostRecord): Promise<void> {
   ghostCache = record
-  ghostLoaded = true
   try {
-    await Storage.set(GHOST_KEY, record)
+    const ok = await Storage.set(GHOST_KEY, record)
+    if (!ok) console.log('[Server] ghost was not persisted')
   } catch (error) {
     console.log('[Server] could not save ghost:', error)
   }
@@ -132,38 +135,92 @@ export async function saveGhost(record: GhostRecord): Promise<void> {
 
 let leaderboardCache: LeaderboardEntry[] | null = null
 
-export async function loadLeaderboard(): Promise<LeaderboardEntry[]> {
-  if (leaderboardCache) return leaderboardCache
+async function readLeaderboard(fresh: boolean): Promise<LeaderboardEntry[] | null> {
   try {
-    const stored = await Storage.get<LeaderboardEntry[]>(LEADERBOARD_KEY)
-    leaderboardCache = Array.isArray(stored) ? stored : []
+    const stored = await Storage.get<LeaderboardEntry[]>(LEADERBOARD_KEY, { fresh })
+    return Array.isArray(stored) ? stored : null
   } catch (error) {
     console.log('[Server] could not read leaderboard:', error)
-    leaderboardCache = []
+    return null
+  }
+}
+
+export async function loadLeaderboard(): Promise<LeaderboardEntry[]> {
+  if (leaderboardCache) return leaderboardCache
+  const stored = await readLeaderboard(false)
+  if (!stored) return []
+  leaderboardCache = mergeBoards(leaderboardCache ?? [], stored)
+  return leaderboardCache
+}
+
+/** Union of two boards: one row per wallet, keeping its best time. */
+function mergeBoards(a: LeaderboardEntry[], b: LeaderboardEntry[]): LeaderboardEntry[] {
+  const byAddress = new Map<string, LeaderboardEntry>()
+  for (const entry of [...a, ...b]) {
+    const key = entry.address.toLowerCase()
+    const existing = byAddress.get(key)
+    if (!existing || entry.timeMs < existing.timeMs) byAddress.set(key, { ...entry })
+  }
+  return Array.from(byAddress.values())
+    .sort((x, y) => x.timeMs - y.timeMs)
+    .slice(0, LEADERBOARD_SIZE)
+}
+
+async function persistLeaderboard(board: LeaderboardEntry[]): Promise<LeaderboardEntry[]> {
+  // Merged against a fresh read so a board missed at startup (or written by
+  // another server instance) is never overwritten by a shorter one.
+  const stored = await readLeaderboard(true)
+  leaderboardCache = mergeBoards(board, stored ?? [])
+  try {
+    const ok = await Storage.set(LEADERBOARD_KEY, leaderboardCache)
+    if (!ok) console.log('[Server] leaderboard was not persisted')
+  } catch (error) {
+    console.log('[Server] could not save leaderboard:', error)
   }
   return leaderboardCache
 }
 
 /** Inserts a time and returns the sorted top. A player occupies a single row. */
 export async function submitLeaderboardTime(entry: LeaderboardEntry): Promise<LeaderboardEntry[]> {
-  const board = await loadLeaderboard()
-  const existing = board.find((e) => e.address === entry.address)
-  if (existing) {
-    if (entry.timeMs >= existing.timeMs) return board
+  const board = (await loadLeaderboard()).slice()
+  const existing = board.find((e) => e.address.toLowerCase() === entry.address.toLowerCase())
+  if (existing && entry.timeMs >= existing.timeMs) {
+    // Not faster, but the name may have changed since that row was saved.
+    if (existing.name === entry.name) return board
+    existing.name = entry.name
+  } else if (existing) {
     existing.timeMs = entry.timeMs
     existing.name = entry.name
     existing.splits = entry.splits
   } else {
     board.push({ ...entry })
   }
-  board.sort((a, b) => a.timeMs - b.timeMs)
-  leaderboardCache = board.slice(0, LEADERBOARD_SIZE)
-  try {
-    await Storage.set(LEADERBOARD_KEY, leaderboardCache)
-  } catch (error) {
-    console.log('[Server] could not save leaderboard:', error)
+  return persistLeaderboard(board)
+}
+
+/**
+ * Updates the name shown for a wallet's leaderboard row and track record, for
+ * rows saved before the name was known (they show the short address).
+ * Returns whether anything changed.
+ */
+export async function renameRacer(address: string, name: string): Promise<boolean> {
+  const key = address.toLowerCase()
+  let changed = false
+
+  const board = (await loadLeaderboard()).map((e) => ({ ...e }))
+  const row = board.find((e) => e.address.toLowerCase() === key)
+  if (row && row.name !== name) {
+    row.name = name
+    await persistLeaderboard(board)
+    changed = true
   }
-  return leaderboardCache
+
+  const ghost = await loadGhost()
+  if (ghost && ghost.address.toLowerCase() === key && ghost.name !== name) {
+    await saveGhost({ ...ghost, name })
+    changed = true
+  }
+  return changed
 }
 
 /**

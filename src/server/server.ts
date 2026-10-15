@@ -11,6 +11,7 @@ import {
   loadLeaderboard,
   loadProfile,
   peekProfile,
+  renameRacer,
   saveGhost,
   saveProfile,
   submitLeaderboardTime
@@ -28,8 +29,11 @@ import {
 
 /** Races in progress, by wallet. */
 const runs = new Map<string, RunState>()
-/** Visible name reported in the `hello`, by wallet. */
+/** Visible name of each wallet, from its `hello`/`raceStart` or its catalyst profile. */
 const names = new Map<string, string>()
+
+/** Public catalyst, to look up a wallet's name when the client didn't report one. */
+const PROFILES_URL = 'https://peer.decentraland.org/lambdas/profiles/'
 
 let recordEntity = engine.RootEntity
 let heartbeatEntity = engine.RootEntity
@@ -84,10 +88,8 @@ function registerHandlers() {
   room.onMessage('hello', (data, context) => {
     if (!context) return
     const address = context.from
-    names.set(address, sanitizeName(data.displayName, address))
     void sendProfile(address)
-    void sendGhosts(address)
-    void sendLeaderboard(address)
+    void greet(address, data.displayName)
   })
 
   room.onMessage('raceStart', (data, context) => {
@@ -99,7 +101,16 @@ function registerHandlers() {
     }
     const profile = peekProfile(address)
     const skinId = profile && profile.ownedSkins.includes(data.skinId) ? data.skinId : findSkin(data.skinId).id
+    // The name travels again here: after a server restart the `hello` is gone.
+    const reported = cleanName(data.displayName)
+    if (reported) names.set(address, reported)
     runs.set(address, createRun(address, names.get(address) ?? shortAddress(address), skinId, Date.now()))
+    if (!names.has(address)) {
+      void resolveName(address, '').then((name) => {
+        const run = runs.get(address)
+        if (run) run.name = name
+      })
+    }
     console.log(`[Server] ${address} started race with ${skinId}`)
   })
 
@@ -302,6 +313,60 @@ function sendShopResult(address: string, ok: boolean, reason: string, skinId: st
   )
 }
 
+// --- Names -----------------------------------------------------------------
+
+/**
+ * Handshake: settles the player's name, fixes their leaderboard row if it was
+ * saved under the short address, then sends the board and ghosts.
+ */
+async function greet(address: string, reported: string) {
+  const name = await resolveName(address, reported)
+  const renamed = name !== shortAddress(address) && (await renameRacer(address, name))
+
+  // Also recovers the record if reading it failed when the server started.
+  const ghost = await loadGhost()
+  if (ghost) {
+    const record = TrackRecord.getMutable(recordEntity)
+    record.holderName = ghost.name
+    record.timeMs = ghost.totalMs
+  }
+
+  if (renamed) {
+    const board = await loadLeaderboard()
+    room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) })
+    await sendGhosts()
+  } else {
+    await sendGhosts(address)
+    await sendLeaderboard(address)
+  }
+}
+
+/**
+ * The client's name when it reported one; otherwise the name on the wallet's
+ * catalyst profile (the explorer can take a while to load it, and a `hello`
+ * sent before that comes empty). The short address is the last resort.
+ */
+async function resolveName(address: string, reported: string): Promise<string> {
+  const clean = cleanName(reported)
+  if (clean) {
+    names.set(address, clean)
+    return clean
+  }
+  const known = names.get(address)
+  if (known) return known
+
+  let name = ''
+  try {
+    const response = await fetch(PROFILES_URL + address)
+    const body = response.ok ? await response.json() : null
+    name = cleanName(body?.avatars?.[0]?.name ?? '')
+  } catch (error) {
+    console.log(`[Server] could not look up the name of ${address}:`, error)
+  }
+  if (name) names.set(address, name)
+  return name || shortAddress(address)
+}
+
 // --- Sends -----------------------------------------------------------------
 
 async function sendProfile(address: string) {
@@ -413,7 +478,6 @@ function shortAddress(address: string): string {
   return address.length > 10 ? `${address.slice(0, 6)}...${address.slice(-4)}` : address
 }
 
-function sanitizeName(raw: string, address: string): string {
-  const trimmed = (raw || '').trim().slice(0, 24)
-  return trimmed.length > 0 ? trimmed : shortAddress(address)
+function cleanName(raw: string): string {
+  return (raw || '').trim().slice(0, 24)
 }
