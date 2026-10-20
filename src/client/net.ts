@@ -13,15 +13,15 @@ const PROFILES_URL = 'https://peer.decentraland.org/lambdas/profiles/'
 const profileKnown = new Map<string, boolean>()
 
 /**
- * Looks up whether a ghost's racer has a published profile.
+ * Looks up whether a ghost's or a leaderboard row's racer has a published profile.
  *
  * Without one (guests, wallets that never entered Decentraland) the explorer
  * draws nothing for its `avatarTexture` — not even the border — and the UI
  * can't detect that, so the HUD needs to know up front to use the fallback.
- * Until the answer arrives the ghost shows the fallback too. Each wallet is
+ * Until the answer arrives they show the fallback too. Each wallet is
  * looked up once per session.
  */
-function checkGhostProfile(address: string) {
+function checkProfile(address: string) {
   if (!address || profileKnown.has(address)) return
   profileKnown.set(address, false)
   executeTask(async () => {
@@ -33,8 +33,11 @@ function checkGhostProfile(address: string) {
       for (const ghost of state.ghosts) {
         if (ghost.address === address) ghost.hasProfile = hasProfile
       }
+      for (const row of state.leaderboard) {
+        if (row.address === address) row.hasProfile = hasProfile
+      }
     } catch (error) {
-      console.log('[Client] could not look up a ghost profile:', error)
+      console.log('[Client] could not look up a racer profile:', error)
     }
   })
 }
@@ -168,7 +171,7 @@ function registerHandlers() {
         hasProfile: profileKnown.get(ghost.address) ?? false,
         distanceM: 0
       }))
-    for (const ghost of state.ghosts) checkGhostProfile(ghost.address)
+    for (const ghost of state.ghosts) checkProfile(ghost.address)
   })
 
   room.onMessage('standings', (data) => {
@@ -178,7 +181,13 @@ function registerHandlers() {
 
   room.onMessage('leaderboardSync', (data) => {
     markMessage()
-    state.leaderboard = data.entries.map((entry) => ({ name: entry.name, timeMs: entry.timeMs }))
+    state.leaderboard = data.entries.map((entry) => ({
+      address: entry.address,
+      name: entry.name,
+      timeMs: entry.timeMs,
+      hasProfile: profileKnown.get(entry.address) ?? false
+    }))
+    for (const row of state.leaderboard) checkProfile(row.address)
   })
 
   room.onMessage('checkpointRejected', (data) => {

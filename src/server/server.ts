@@ -6,6 +6,7 @@ import { room } from '../shared/messages'
 import { ServerHeartbeat, TrackRecord, protectServerEntity } from '../shared/schemas'
 import {
   GhostRecord,
+  LeaderboardEntry,
   loadGhost,
   loadGhosts,
   loadLeaderboard,
@@ -237,7 +238,7 @@ async function finishRace(address: string, report: FinishPayload) {
       timeMs: report.elapsedMs,
       splits: isCompleteGhost(run.splits) ? run.splits.slice() : undefined
     })
-    room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) })
+    room.send('leaderboardSync', boardPayload(board))
     void sendGhosts()
   }
 
@@ -333,7 +334,7 @@ async function greet(address: string, reported: string) {
 
   if (renamed) {
     const board = await loadLeaderboard()
-    room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) })
+    room.send('leaderboardSync', boardPayload(board))
     await sendGhosts()
   } else {
     await sendGhosts(address)
@@ -394,9 +395,14 @@ async function sendGhosts(address?: string) {
   else room.send('ghostsSync', payload)
 }
 
+/** The board as the clients get it: no splits, those travel in `ghostsSync`. */
+function boardPayload(board: LeaderboardEntry[]) {
+  return { entries: board.map((e) => ({ address: e.address, name: e.name, timeMs: e.timeMs })) }
+}
+
 async function sendLeaderboard(address: string) {
   const board = await loadLeaderboard()
-  room.send('leaderboardSync', { entries: board.map((e) => ({ name: e.name, timeMs: e.timeMs })) }, { to: [address] })
+  room.send('leaderboardSync', boardPayload(board), { to: [address] })
 }
 
 // --- Loop -------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { Storage } from '@dcl/sdk/server'
-import { DEFAULT_SKIN_ID, ECONOMY, SKINS, TRACK_ID, isCompleteGhost } from '../shared/config'
+import { DEFAULT_SKIN_ID, ECONOMY, LEADERBOARD_SIZE, SKINS, TRACK_ID, isCompleteGhost } from '../shared/config'
 
 export type PlayerProfile = {
   coins: number
@@ -29,7 +29,6 @@ export type LeaderboardEntry = {
 const PROFILE_KEY = 'profile'
 const GHOST_KEY = `ghost:${TRACK_ID}`
 const LEADERBOARD_KEY = `leaderboard:${TRACK_ID}`
-const LEADERBOARD_SIZE = 10
 
 /**
  * In-memory cache of profiles.

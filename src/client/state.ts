@@ -32,6 +32,14 @@ export type GhostRun = {
   distanceM: number
 }
 
+export type LeaderboardRow = {
+  address: string
+  name: string
+  timeMs: number
+  /** The racer has a published profile; otherwise the HUD uses the fallback picture. */
+  hasProfile: boolean
+}
+
 export type RaceResult = {
   completed: boolean
   accepted: boolean
@@ -104,7 +112,8 @@ export const state = {
   /** Leaderboard ghosts, fastest first: `ghosts[0]` is the track record. */
   ghosts: [] as GhostRun[],
   standings: [] as StandingEntry[],
-  leaderboard: [] as { name: string; timeMs: number }[],
+  /** Top 10 times, fastest first. */
+  leaderboard: [] as LeaderboardRow[],
   recordHolder: '',
   recordTimeMs: 0,
 

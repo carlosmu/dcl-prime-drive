@@ -257,6 +257,9 @@ export function findSkin(id: string): SkinDef {
 
 // ─── Track identifier ──────────────────────────────────────────────────
 
+/** Rows the leaderboard keeps: the top times, one per wallet. */
+export const LEADERBOARD_SIZE = 10
+
 /** Changing this id invalidates saved records and ghosts (useful when rebalancing). */
 export const TRACK_ID = 'neon-mile-v3'
 

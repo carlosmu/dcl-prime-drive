@@ -114,6 +114,8 @@ export const Messages = {
   leaderboardSync: Schemas.Map({
     entries: Schemas.Array(
       Schemas.Map({
+        /** Wallet of the racer, for their profile picture on the HUD. */
+        address: Schemas.String,
         name: Schemas.String,
         timeMs: Schemas.Int
       })

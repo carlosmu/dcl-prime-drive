@@ -3,6 +3,7 @@ import { state } from '../state'
 import { DebugPanel } from './debug'
 import { CrashFlash } from './crashFlash'
 import { Hud } from './hud'
+import { LiveRank } from './liveRank'
 import { Menu } from './menu'
 import { Results } from './results'
 import { COLORS, PANEL_RADIUS } from './theme'
@@ -25,6 +26,8 @@ const Root = () => (
     {state.phase === 'racing' || state.phase === 'countdown' ? <Hud /> : null}
     {state.phase === 'menu' ? <Menu /> : null}
     {state.phase === 'finished' || state.phase === 'wrecked' ? <Results /> : null}
+    {/* Stays up past the finish line, now with the real time instead of the estimate. */}
+    {state.phase === 'finished' ? <LiveRank /> : null}
     {state.toast.length > 0 ? <Toast /> : null}
     {state.debugOn ? <DebugPanel /> : null}
   </UiEntity>

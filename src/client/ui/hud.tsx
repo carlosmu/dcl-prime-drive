@@ -9,6 +9,8 @@ import { PRIME_FONT } from './bitmapFont'
 import { atlasIcon } from './atlas'
 import { COLORS, PANEL_RADIUS, ProgressBar, Text } from './theme'
 import { KeyboardGuide, keyboardGuideHeight, keyboardGuideWidth } from './keyboardGuide'
+import { LiveRank } from './liveRank'
+import { ProfilePic } from './profilePic'
 
 /** Race HUD: time, coins, lives, and comparison with rivals. */
 export const Hud = () => {
@@ -93,6 +95,8 @@ export const Hud = () => {
           />
         </UiEntity>
       </UiEntity>
+
+      <LiveRank />
 
       {state.invalidated ? (
         <UiEntity
@@ -212,14 +216,6 @@ const LIFE_ICON = 24
 const BAR_HEIGHT = 13.5
 /** Profile pictures sitting on the progress bar. */
 const AVATAR_SIZE = 32
-/** Shown instead of a profile picture when there isn't one (guests, offline). */
-const FALLBACK_AVATAR = 'assets/images/fallback_profile_pic.png'
-/**
- * Panel-colored square with a transparent circle, laid over each picture.
- * Desktop doesn't clip textures to `borderRadius` (mobile does), so this
- * crops them to a circle on every platform.
- */
-const AVATAR_MASK = 'assets/images/avatar_mask.png'
 /** How far a picture sticks out above (and below) the bar it's centered on. */
 const AVATAR_OVERHANG = (AVATAR_SIZE - BAR_HEIGHT) / 2
 /** What the thicker bar and its pictures add to the top bar, over the original 5 px bar. */
@@ -259,31 +255,10 @@ const RacerAvatars = (props: { progress: number }) => {
             positionType: 'absolute',
             // Centered on its spot along the bar, in both axes.
             position: { left: `${Math.max(0, Math.min(1, racer.progress)) * 100}%`, top: -AVATAR_OVERHANG },
-            margin: { left: -AVATAR_SIZE / 2 },
-            borderRadius: AVATAR_SIZE / 2
+            margin: { left: -AVATAR_SIZE / 2 }
           }}
-          uiBackground={
-            racer.userId
-              ? { textureMode: 'stretch', avatarTexture: { userId: racer.userId } }
-              : { textureMode: 'stretch', texture: { src: FALLBACK_AVATAR } }
-          }
         >
-          <UiEntity
-            uiTransform={{ width: '100%', height: '100%', positionType: 'absolute', position: { top: 0, left: 0 } }}
-            uiBackground={{ textureMode: 'stretch', texture: { src: AVATAR_MASK } }}
-          />
-          {/* The ring goes over the mask, so the mask's antialiased edge never shows. */}
-          <UiEntity
-            uiTransform={{
-              width: '100%',
-              height: '100%',
-              positionType: 'absolute',
-              position: { top: 0, left: 0 },
-              borderRadius: AVATAR_SIZE / 2,
-              borderWidth: 2,
-              borderColor: racer.color
-            }}
-          />
+          <ProfilePic userId={racer.userId} size={AVATAR_SIZE} ringColor={racer.color} />
         </UiEntity>
       ))}
     </UiEntity>
