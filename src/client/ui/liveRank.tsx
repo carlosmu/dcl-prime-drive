@@ -87,12 +87,26 @@ const RankLine = (props: { key?: string; row: RankRow }) => {
           <UiEntity uiTransform={{ width: 16, height: 3 }} uiBackground={{ color: COLORS.textDim }} />
         )}
       </UiEntity>
-      <ProfilePic
-        userId={row.userId}
-        size={AVATAR_SIZE}
-        ringColor={row.isPlayer ? COLORS.accent : COLORS.ghost}
-        mask={row.isPlayer ? PLAYER_ROW_MASK : undefined}
-      />
+      {/* The mask's corners are opaque: on the see-through panel they'd show as a
+          dark square. An opaque disc of their exact color swallows them. */}
+      <UiEntity
+        uiTransform={{
+          width: BACKDROP_SIZE,
+          height: BACKDROP_SIZE,
+          flexShrink: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderRadius: BACKDROP_SIZE / 2
+        }}
+        uiBackground={{ color: row.isPlayer ? PLAYER_ROW : MASK_CORNER }}
+      >
+        <ProfilePic
+          userId={row.userId}
+          size={AVATAR_SIZE}
+          ringColor={row.isPlayer ? COLORS.accent : COLORS.ghost}
+          mask={row.isPlayer ? PLAYER_ROW_MASK : undefined}
+        />
+      </UiEntity>
       {/* Right-aligned, so the asterisk grows to the left and the times stay lined up. */}
       <UiEntity uiTransform={{ flexGrow: 1, height: '100%' }}>
         <Text
@@ -179,6 +193,10 @@ const PANEL_CORNER = 18
 const ROW_HEIGHT = 44
 const ROW_GAP = 4
 const AVATAR_SIZE = 32
+/** Disc behind each picture: a few px wider so its round edge hides the mask's square one. */
+const BACKDROP_SIZE = AVATAR_SIZE + 6
+/** `COLORS.panel` at full opacity: the corner color of `AVATAR_MASK` (10, 13, 23). */
+const MASK_CORNER = Color4.create(COLORS.panel.r, COLORS.panel.g, COLORS.panel.b, 1)
 /** Must stay the corner color of `PLAYER_ROW_MASK` (15, 64, 97): the mask's corners are opaque. */
 const PLAYER_ROW = Color4.create(15 / 255, 64 / 255, 97 / 255, 1)
 const PLAYER_ROW_MASK = 'assets/images/avatar_mask_highlight.png'
